@@ -7,8 +7,8 @@ TUI calendar app written in rust
 #### Built with [Cursive](https://github.com/gyscos/cursive)
  
 <p align="center">
-  <img src="./images/3.PNG">
-  <img src="./images/4.PNG">
+  <img height=300 src="./images/3.PNG">
+  <img height=300 src="./images/4.PNG">
 </p>
 
 ## Building the project
