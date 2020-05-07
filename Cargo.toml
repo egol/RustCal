@@ -1,0 +1,22 @@
+[package]
+name = "gui"
+version = "0.1.0"
+authors = ["Kilner <egoriluk@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# chrono = "0.4"
+chrono = { version = "0.4.0", features = ["serde"] }
+cursive_calendar_view = "0.6.0"
+serde = "1.0.106"
+# hyper = "0.13.5"   
+serde_derive = "1.0.106"
+serde_json = "1.0.51"
+hyper = "0.10.9"
+
+[dependencies.cursive]
+version = "0.14"
+default-features = false
+features = ["blt-backend"]
