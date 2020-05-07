@@ -20,6 +20,10 @@ TUI calendar app written in rust
     - `termion-backend`: uses the pure-rust [termion] library. Works on Linux, macOS, and Redox.
     - `crossterm-backend`: uses the pure-rust [crossterm] library. Works crossplatform, even for windows systems down to version 7.
     - `blt-backend`: uses the cross-platform [BearLibTerminal.rs] binding. Works on Linux and Windows.
+ - ### Instructions
+ 
+    1. modify the toml file line pictured below with the backend you desire
+    2. simply do `cargo run` to run the application
 
 ## Features
  * Month by Month displaying
