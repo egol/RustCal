@@ -1,5 +1,6 @@
 # RustCal
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 TUI calendar app written in rust
 #### Built with [Cursive](https://github.com/gyscos/cursive)
  
