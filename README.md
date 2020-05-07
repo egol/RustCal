@@ -1,6 +1,6 @@
 # RustCal
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.1-orange)]()
+[![Version](https://img.shields.io/badge/version-v0.1-orange)](https://github.com/egol/RustCal)
 
 
 TUI calendar app written in rust
