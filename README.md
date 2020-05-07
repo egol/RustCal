@@ -28,7 +28,7 @@ TUI calendar app written in rust
    default-features = false
    features = ["<Your backend here>"]
    ```
-    3. run the command `cargo run` to launch the application
+    3. use the command `cargo run` to launch the application
 
 ## Features
  * Month by Month displaying
