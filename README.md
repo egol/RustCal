@@ -1,7 +1,6 @@
 # RustCal
-#### Built with [Cursive](https://github.com/gyscos/cursive)
-
 TUI calendar app written in rust
+#### Built with [Cursive](https://github.com/gyscos/cursive)
  
 <p align="center">
   <img width="460" height="300" src="Capture3333.PNG">
