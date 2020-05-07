@@ -19,4 +19,4 @@ hyper = "0.10.9"
 [dependencies.cursive]
 version = "0.14"
 default-features = false
-features = ["blt-backend"]
+features = ["crossterm-backend"]
