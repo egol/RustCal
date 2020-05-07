@@ -1,5 +1,5 @@
 # RustCal
-====
+
 TUI calendar app written in rust
  
 <p align="center">
@@ -10,11 +10,11 @@ TUI calendar app written in rust
 ## Building the project
 
 
-====
+
 ## Built with
 * Cursive
 
-====
+
 ## Features
  * Month by Month displaying
  * Basic Todo List functionality
