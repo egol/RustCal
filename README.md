@@ -8,7 +8,7 @@ TUI calendar app written in rust
 </p>
 
 ## Building the project
-
+[a link](https://github.com/gyscos/cursive/wiki/Backends)
 
 
 ## Features
