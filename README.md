@@ -21,14 +21,14 @@ TUI calendar app written in rust
     - `crossterm-backend`: uses the pure-rust [crossterm] library. Works crossplatform, even for windows systems down to version 7.
     - `blt-backend`: uses the cross-platform [BearLibTerminal.rs] binding. Works on Linux and Windows.
  - ### Instructions
- 
-    1. modify the toml file line pictured below with the backend you desire
+    1. clone the git repository
+    2. modify the toml file line pictured below with the backend you desire
     ```[dependencies.cursive]
    version = "0.14"
    default-features = false
    features = ["<Your backend here>"]
    ```
-    2. simply do `cargo run` to run the application
+    3. run the command `cargo run` to launch the application
 
 ## Features
  * Month by Month displaying
