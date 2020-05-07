@@ -23,6 +23,11 @@ TUI calendar app written in rust
  - ### Instructions
  
     1. modify the toml file line pictured below with the backend you desire
+    ```[dependencies.cursive]
+   version = "0.14"
+   default-features = false
+   features = ["<Your backend here>"]
+   ```
     2. simply do `cargo run` to run the application
 
 ## Features
