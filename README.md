@@ -1,4 +1,5 @@
 # RustCal
+#### Built with [Cursive](https://github.com/gyscos/cursive)
 
 TUI calendar app written in rust
  
@@ -10,8 +11,6 @@ TUI calendar app written in rust
 ## Building the project
 
 
-
-#### Built with [Cursive](https://github.com/gyscos/cursive)
 
 ## Features
  * Month by Month displaying
