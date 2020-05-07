@@ -8,8 +8,14 @@ TUI calendar app written in rust
 </p>
 
 ## Building the project
-[Various backends provided by Cursive](https://github.com/gyscos/cursive/wiki/Backends)
 
+ - ### [Available backends](https://github.com/gyscos/cursive/wiki/Backends)
+
+    - `ncurses-backend` _(default)_: uses the [ncurses-rs] library directly. Currently only compatible on Linux and macOS. 
+    - `pancurses-backend`: uses the [pancurses] library, which forwards calls to [ncurses-rs] on Linux/macOS or [pdcurses-sys] on Windows. 
+    - `termion-backend`: uses the pure-rust [termion] library. Works on Linux, macOS, and Redox.
+    - `crossterm-backend`: uses the pure-rust [crossterm] library. Works crossplatform, even for windows systems down to version 7.
+    - `blt-backend`: uses the cross-platform [BearLibTerminal.rs] binding. Works on Linux and Windows.
 
 ## Features
  * Month by Month displaying
