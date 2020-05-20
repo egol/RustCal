@@ -285,6 +285,9 @@ fn get_ascii_time() -> String{
         let num = tm[0..2].parse::<i32>().unwrap() - 12;
         tm = format!("{}{}", num, &tm[2..8]);
     }
+    if &tm[1..2] == ":" {
+        tm = format!("0{}", tm);
+    }
 
     let top_str: String = tm.chars().map(|x| top[x as usize - '0' as usize]).collect();
 
@@ -318,6 +321,7 @@ impl View for Clock {
             }
             else{
                 // do something with character `c` and index `i`
+                //ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90))
                 p.with_color(ColorStyle::primary(), |printer| {
                     printer.print((x%len, y), &format!("{}", c));
                 });
@@ -336,7 +340,7 @@ impl View for Clock {
     fn required_size(&mut self, _: Vec2) -> Vec2 {
         //(11, 5).into()
         //self.size = (78, 36).into();
-        (68, 30).into()
+        (71, 8).into()
     }
 }
 
@@ -1260,7 +1264,6 @@ fn create_panel(year : i32, month : u32, st : Rc<RefCell<Storage>>) -> Panel<Lin
             ))
             .title(month_to_string(month as i32)))
     )
-    .child(Panel::new(Clock::new()))
     )
 }
 
@@ -1484,6 +1487,10 @@ fn main() {
     //let temp: &mut Vec<TextEvent> = view.events.entry(view.view_date.clone()).or_default();
     // data.calendar_data.entry(Utc.ymd(year, month, 1)).or_insert(calendar);
 
+    siv.add_layer(Clock::new());
+
+    move_top(&mut siv, 106, 10);
+
     siv.add_layer(create_panel(year, month, data));
 
     let sink = siv.cb_sink().clone();
@@ -1495,7 +1502,7 @@ fn main() {
         }
     });
 
-
+    // move_top(&mut siv, 70, 15);
 
     siv.run();
 }
