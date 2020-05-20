@@ -16,7 +16,7 @@ TUI calendar app written in rust
  * Basic Todo List functionality
  * Flexible cross-platform TUI library that supports Linux, Windows and Mac
  * Basic saving functionality through a single accssesible json file (press 'k' to save)
- - An ascii art digital clock
+ * An ascii art digital clock
 ## Working on
  - Implimenting a weather forecast display using a user provided API key
 ## Goals
