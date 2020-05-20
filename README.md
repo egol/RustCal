@@ -7,8 +7,8 @@ TUI calendar app written in rust
 #### Built with [Cursive](https://github.com/gyscos/cursive)
  
 <p align="center">
-  <img width="460" height="300" src="./images/1.PNG">
-  <img width="460" height="300" src="./images/2.PNG">
+  <img height=300 src="./images/3.PNG">
+  <img height=300 src="./images/4.PNG">
 </p>
 
 ## Building the project
@@ -28,7 +28,7 @@ TUI calendar app written in rust
    default-features = false
    features = ["<Your backend here>"]
    ```
-    3. run the command `cargo run` to launch the application
+    3. use the command `cargo run` to launch the application
 
 ## Features
  * Month by Month displaying
