@@ -10,6 +10,7 @@ TUI calendar app written in rust
   <img height=300 src="./images/3.PNG">
   <img height=300 src="./images/4.PNG">
 </p>
+pictured above: version 0.1
 
 ## Features
  * Month by Month displaying
