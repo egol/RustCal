@@ -615,8 +615,6 @@ where
 
     fn on_event(&mut self, event: Event) -> EventResult {
 
-        log::info!("This is a debug message.");
-
         if !self.enabled {
             return EventResult::Ignored;
         }
@@ -1072,15 +1070,6 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
                 }))
                 )
             )).min_width(23))
-            // .child(Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
-                        
-            //     s.pop_layer();
-
-            //     let st_clone = Arc::clone(&st);
-
-            //     s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone)));
-
-            // })))
 
             .child(NamedView::new("clock", Panel::new(Clock::new())))
         )
@@ -1336,10 +1325,10 @@ fn main() {
     let month = utc.month();
 
     // Create a log file
-    let log_file = File::create("app.log").unwrap();
+    // let log_file = File::create("app.log").unwrap();
 
     // Initialize the logger to write to the file
-    WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
+    // WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
 
     // let data = Rc::new(RefCell::new(Storage::new(read())));
     let data = Arc::new(Mutex::new(Storage::new(read())));
