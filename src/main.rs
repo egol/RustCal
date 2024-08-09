@@ -11,7 +11,7 @@
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::{prelude::*, Empty};
 use std::fs;
 
 use std::sync::{Arc, Mutex};
@@ -32,20 +32,29 @@ use cursive::view::Position;
 use cursive::views::NamedView;
 use cursive::views::LayerPosition;
 use cursive::event::{Callback, Event, EventResult, Key, MouseButton, MouseEvent};
+use cursive::utils::markup::StyledString;
 
 use log::LevelFilter;
 use simplelog::{Config, WriteLogger};
 
 mod util;
 
-const TOP: &str="   .oooo.  #   .o #   .oooo.  #   .oooo. #      .o  #  oooooooo#   .ooo   # ooooooooo# .ooooo.  #  .ooooo. #    ";
-const M1: &str ="  d8P'`Y8b # o888 # .dP\"\"Y88b #.dP\"\"Y88b #    .d88  # dP\"\"\"\"\"\"\"#  .88'    #d\"\"\"\"\"\"\"8'#d88'   `8.#888' `Y88.#    ";
-const M2: &str =r##" 888    888#  888 #       |8P'#      |8P'#  .d'888  #d88888b.  # d88'     #      .8' #Y88..  .8'#888    888#    "##  ;
-const M3: &str =" 888    888#  888 #     .d8P' #    <88b. #.d'  888  #    `Y88b #d888P\"Ybo.#     .8'  # `88888b. # `Vbood888#    " ;
-const M4: &str =" 888    888#  888 #   .dP'    #     `88b.#88ooo888oo#      |88 #Y88|   |88#    .8'   #.8'  ``88b#      888'#    ";
-const M5: &str =" `88b  d88'#  888 # .oP     .o#o.   .88P #     888  #o.   .88P #`Y88   88P#   .8'    #`8.   .88P#    .88P' #    ";
-const BOT: &str="  `Y8bd8P' # o888o# 8888888888#`8bd88P'  #    o888o #`8bd88P'  # `88bod8' #  .8'     # `boood8' #  .oP'    #    ";
+const TOP: &str=   "   .oooo.   #   .o  #   .oooo.   #   .oooo.  #      .o   #  oooooooo #   .ooo    # ooooooooo # .ooooo.   #  .ooooo.  #    ";
+const M1: &str =   "  d8P'`Y8b  # o888  # .dP\"\"Y88b  #.dP\"\"Y88b  #    .d88   # dP\"\"\"\"\"\"\" #  .88'     #d\"\"\"\"\"\"\"8' #d88'   `8. #888' `Y88. #    ";
+const M2: &str =r##" 888    888 #  888  #       |8P' #      |8P' #  .d'888   #d88888b.   # d88'      #      .8'  #Y88..  .8' #888    888 #    "##  ;
+const M3: &str =   " 888    888 #  888  #     .d8P'  #    <88b.  #.d'  888   #    `Y88b  #d888P\"Ybo. #     .8'   # `88888b.  # `Vbood888 #    " ;
+const M4: &str =   " 888    888 #  888  #   .dP'     #     `88b. #88ooo888oo #      |88  #Y88|   |88 #    .8'    #.8'  ``88b #      888' #    ";
+const M5: &str =   " `88b  d88' #  888  # .oP     .o #o.   .88P  #     888   #o.   .88P  #`Y88   88P #   .8'     #`8.   .88P #    .88P'  #    ";
+const BOT: &str=   "  `Y8bd8P'  # o888o # 8888888888 #`8bd88P'   #    o888o  #`8bd88P'   # `88bod8'  #  .8'      # `boood8'  #  .oP'     #    ";
 
+const BADGE: &str= "
+██████╗  ██████╗
+██╔══██╗██╔════╝
+██████╔╝██║     
+██╔══██╗██║     
+██║  ██║╚██████╗
+╚═╝  ╚═╝ ╚═════╝
+";
 // fn ndays_in_month(year: i32, month: u32) -> u32 {
 //     // the first day of the next month...
 //     let (y, m) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
@@ -193,8 +202,6 @@ impl View for Clock {
                 temp = 0;
             }
             else{
-                // do something with character `c` and index `i`
-                //ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90))
                 p.with_color(ColorStyle::primary(), |printer| {
                     printer.print((x%len, y), &format!("{}", c));
                 });
@@ -211,9 +218,7 @@ impl View for Clock {
     }
 
     fn required_size(&mut self, _: Vec2) -> Vec2 {
-        //(11, 5).into()
-        //self.size = (78, 36).into();
-        (71, 8).into()
+        Vec2::new(78, 8)
     }
 }
 
@@ -425,7 +430,7 @@ where
                 // Draw day number
                 let (x, y) = (num%7*11, num/7*6);
                 
-                // Borrow the reference to storage using the async Rc and RefCell combination
+                // Borrow the reference to storage using the async Arc and Mutex combination
                 let storage_ref = self.storage.lock().unwrap();
                 let events = storage_ref.events
                                 .get(&NaiveDate::from_ymd_opt(exact_date.year(), exact_date.month(), exact_date.day()).unwrap())
@@ -433,7 +438,7 @@ where
                     
                 let mut past = true;
 
-                if (exact_date.day0() > active_day as u32 && d_month == 0 && d_year == 0) || d_year < 0 || (d_month < 0 && d_year <= 0){
+                if (exact_date.day0() >= active_day as u32 && d_month == 0 && d_year == 0) || d_year < 0 || (d_month < 0 && d_year <= 0){
                     past = false;
                 }
                 
@@ -496,11 +501,8 @@ where
                         printer.print((x + offset_x, y + offset_y), "│");
                     });
                 }
-                // else if x == x_max-1 || y == y_max-1 || x == 0 || y == 0{
-                //     p.with_color(color, |printer| {
-                //         printer.print((x + offset_x, y + offset_y), " ");
-                //     });
-                // }
+
+                //draw past event totals (greyed out)
                 else if x == 1 && !past{
                     if x == 1 && y == 1 && nums[0] > 0{
                         p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90)), |printer| {
@@ -518,6 +520,7 @@ where
                         });
                     }
                 }
+                //draw current/future event totals
                 else if x == 1 && past{
                     if x == 1 && y == 1 && nums[0] > 0{
                         p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(70, 70, 70)), |printer| {
@@ -590,7 +593,6 @@ where
         Some((pos.x, pos.y).into())
         
     }
-
 }
 
 
@@ -741,6 +743,73 @@ where
             ),
             Event::Key(Key::Left) => Some((-1, 0, 0, 0)
             ),
+            Event::Key(Key::Enter) => {
+
+                // TODO this should be generalized and used for both the mouse right click and key click
+
+                let mut storage_ref_mut = self.storage.lock().unwrap();
+
+                let events = storage_ref_mut.events.entry(
+                    NaiveDate::from_ymd_opt(self.view_date.year(), self.view_date.month(), self.view_date.day()).unwrap()).or_default().clone();
+
+                return EventResult::Consumed(Some(Callback::from_fn(move |s| {
+
+                    let mut list = TodoList::new();
+                    for a in events.iter(){
+                        list.add_status(a.status);
+                    }
+
+                    s.add_layer(Dialog::around(LinearLayout::horizontal()
+                    .child(NamedView::new("list", list))
+                    .child(
+                            LinearLayout::vertical().child(NamedView::new("todo", ListView::new()
+                                // Each child is a single-line view with a label
+                                .delimiter()
+                                .with(|list| {
+                                    // generate the children with a for loop
+                                    for (i, value) in events.iter().enumerate() {
+                                        list.add_child(
+                                            &format!("Event {}:", i),
+                                            create_event_editor::<T>(value.content.clone(), i),
+                                        );
+                                    }
+                                }))
+                                .scrollable())
+                                .child(Button::new_raw("<+>", |s| {
+                                    s.call_on_name("calendar", |view: &mut CalendarView<T>| {
+
+                                        let mut storage_ref_mut = view.storage.lock().unwrap();
+
+                                        storage_ref_mut.events.entry(
+                                            NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap())
+                                            .or_insert(Vec::new()).push(TextEvent::new(String::from("")));
+                                    });
+                                    s.call_on_name("todo", |view: &mut NamedView<ListView>| {
+                                        let mut view = view.get_mut();
+                                        let len = view.len()-1;
+
+                                        view.add_child(
+                                            &format!("Event {}:", len),
+                                            create_event_editor::<T>(String::from(""), len),
+                                        );
+                                    });
+
+                                    s.call_on_name("list", |view: &mut NamedView<TodoList>| {
+                                        let mut view = view.get_mut();
+                                        view.add_status(0);
+                                    });
+                                    
+                                }))
+                    ))
+                    .title("Todo")
+                    
+                    //save content here
+                    .button("Ok", |s| {
+                        s.pop_layer();
+                    }));
+                })));
+
+            }
             _ => None,
         };
 
@@ -829,12 +898,12 @@ impl TodoList {
                     if x == 0 {
                         if self.focused != None && self.focused.unwrap().x == 0 && self.focused.unwrap().y == y{
                             p.with_color(ColorStyle::highlight(), |printer| {
-                                printer.print((x, y), "-");
+                                printer.print((x, y), "X");
                             });
                         }
                         else{
                             p.with_color(ColorStyle::primary(), |printer| {
-                                printer.print((x, y), "-");
+                                printer.print((x, y), "x");
                             });
                         }
                     }
@@ -906,7 +975,7 @@ impl View for TodoList {
                         // We got a click here!
                         match btn {
                             MouseButton::Left => { 
-                                if pos.x > 0 && pos.y > 0 && self.importance_list.len() > 0 && pos.y <= self.importance_list.len(){
+                                if (pos.x > 0 && pos.x < 4) && pos.y > 0 && self.importance_list.len() > 0 && pos.y <= self.importance_list.len(){
                                     if self.importance_list[pos.y-1] < 2{
                                         self.importance_list[pos.y-1] += 1;
                                     }
@@ -929,9 +998,7 @@ impl View for TodoList {
 
                                     })));
                                 }
-                                else if pos.y > 0 && self.importance_list.len() > 0 && pos.y <= self.importance_list.len(){
-                                    //println!("{} |    {}", self.importance_list.len(), pos.y-1);
-
+                                else if pos.x == 0 && pos.y > 0 && self.importance_list.len() > 0 && pos.y <= self.importance_list.len(){
                                     self.importance_list.remove(pos.y-1);
 
                                     return EventResult::Consumed(Some(Callback::from_fn(move |s| {
@@ -939,14 +1006,14 @@ impl View for TodoList {
 
                                             let mut storage_ref_mut = view.storage.lock().unwrap();
 
-                                            storage_ref_mut.events.entry(NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap())
+                                            storage_ref_mut.events.entry(NaiveDate::from_ymd_opt(view.view_date.year(),
+                                                view.view_date.month(), view.view_date.day()).unwrap())
                                                 .or_default().remove(pos.y-1);
 
                                         });
 
                                         s.call_on_name("todo", |view: &mut NamedView<ListView>| {
                                             let mut view = view.get_mut();
-
                                             view.remove_child(pos.y);
                                         });
                                         
@@ -983,99 +1050,138 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
     let st_clone_panel = Arc::clone(&st);
     let st_clone_panel2 = Arc::clone(&st);
     let st_clone_panel3 = Arc::clone(&st);
+    let st_clone_panel4 = Arc::clone(&st);
 
     // create the entire calendar display
-    Panel::new(LinearLayout::horizontal()
-
-        // create the month selector
-        .child(NamedView::new("view1", 
-            Panel::new(LinearLayout::vertical()
-                .with(|column| {
-
-                    // TODO move this outside as a global setting
-                    let num_rows = 3;
-                    let mut month = 1;
-
-                    // generate each row 
-                    for rows in 0..(12/num_rows) {
-
-                        column.add_child(LinearLayout::horizontal()
-                            .with(|row| {
-
-                                // generate the children with a for loop
-                                for columns in 0..num_rows {
-
-                                    let st_clone = Arc::clone(&st);
-                                    
-                                    row.add_child(Panel::new(Button::new(abbr_month_to_string(month), move |s| {
-                                        s.pop_layer();
-                                        s.add_layer(create_panel(year, month as u32, Arc::clone(&st_clone)));
-                                    })));
-
-                                    month += 1;
-                                }
-                            })
-                        )
-
-                    }
-                })
-                // spacer
-                .child(Layer::new(TextView::new(" ")))
-
-                // create the current date button
-                .child(Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
-                    
+    Panel::new(
+        LinearLayout::vertical()
+        .child(LinearLayout::horizontal()
+            // .child(Panel::new(Layer::new(TextView::new(StyledString::styled(BADGE, Color::Dark(BaseColor::Blue))).center().fixed_width(21))
+            // .child(Panel::new(Layer::new(TextView::new(" ").center().fixed_width(21))))
+            
+            .child(Panel::new(PaddedView::lrtb( 2, 2, 2, 2, LinearLayout::vertical()
+                .child(
+                Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
+                        
                     s.pop_layer();
-
-                    let st_clone = Arc::clone(&st);
-
+    
+                    let st_clone = Arc::clone(&st_clone_panel4);
+    
                     s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone)));
+    
+                }))
+                )
+            )).min_width(23))
+            // .child(Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
+                        
+            //     s.pop_layer();
 
-                })))
-                ).title(year.to_string())
-            )
+            //     let st_clone = Arc::clone(&st);
+
+            //     s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone)));
+
+            // })))
+
+            .child(NamedView::new("clock", Panel::new(Clock::new())))
         )
         .child(
-                // calendar with days
-            NamedView::new("view2", Panel::new(create_calendar(year, month, Arc::clone(&st_clone_panel))
-                .child(Layer::new(
-                    LinearLayout::horizontal()
-                        .child(
-                            PaddedView::lrtb(36, 0, 0, 0, LinearLayout::vertical()
-                                .child(
-                                    Button::new("Up", move |s| {
+            LinearLayout::horizontal()
+            // create the month selector
+            .child(NamedView::new("view1", 
+                Panel::new(LinearLayout::vertical()
+                    .with(|column| {
 
-                                        s.pop_layer();
+                        // TODO move this outside as a global setting
+                        let num_rows = 3;
+                        let mut month = 1;
 
-                                        let st_clone = Arc::clone(&st_clone_panel2);
+                        // generate each row 
+                        for rows in 0..(12/num_rows) {
 
-                                        if month-1 == 0{
-                                            s.add_layer(create_panel(year-1, 12, Arc::clone(&st_clone)));
-                                        } else {
-                                            s.add_layer(create_panel(year, month-1, Arc::clone(&st_clone)));
-                                        }
-                                    })
-                                )
-                                .child(
-                                    Button::new("Down", move |s| {
+                            column.add_child(LinearLayout::horizontal()
+                                .with(|row| {
 
-                                        s.pop_layer();
+                                    // generate the children with a for loop
+                                    for columns in 0..num_rows {
 
-                                        let st_clone = Arc::clone(&st_clone_panel3);
+                                        let st_clone = Arc::clone(&st);
+                                        
+                                        row.add_child(Panel::new(Button::new(abbr_month_to_string(month), move |s| {
+                                            s.pop_layer();
+                                            s.add_layer(create_panel(year, month as u32, Arc::clone(&st_clone)));
+                                        })));
 
-                                        if month+1 == 13{
-                                            s.add_layer(create_panel(year+1, 1, Arc::clone(&st_clone)));
-                                        } else {
-                                            s.add_layer(create_panel(year, month+1, Arc::clone(&st_clone)));
-                                        }
-                                    })
+                                        month += 1;
+                                    }
+                                })
+                            )
+
+                        }
+                    })
+                    // spacer
+                    .child(Layer::new(TextView::new(" ")))
+
+                    // create the current date button
+                    // .child(Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
+                        
+                    //     s.pop_layer();
+
+                    //     let st_clone = Arc::clone(&st);
+
+                    //     s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone)));
+
+                    // })))
+
+                    // spacer
+                    .child(Layer::new(TextView::new(" ")))
+
+                    // .child(Panel::new(Layer::new(TextView::new("").center().fixed_width(19))
+                    // ).title("On this day"))
+                    ).title(year.to_string())
+                )
+            )
+            .child(
+                    // calendar with days
+                NamedView::new("view2", Panel::new(create_calendar(year, month, Arc::clone(&st_clone_panel))
+                    .child(Layer::new(
+                        LinearLayout::horizontal()
+                            .child(
+                                PaddedView::lrtb(36, 0, 0, 0, LinearLayout::vertical()
+                                    .child(
+                                        Button::new("Up", move |s| {
+
+                                            s.pop_layer();
+
+                                            let st_clone = Arc::clone(&st_clone_panel2);
+
+                                            if month-1 == 0{
+                                                s.add_layer(create_panel(year-1, 12, Arc::clone(&st_clone)));
+                                            } else {
+                                                s.add_layer(create_panel(year, month-1, Arc::clone(&st_clone)));
+                                            }
+                                        })
+                                    )
+                                    .child(
+                                        Button::new("Down", move |s| {
+
+                                            s.pop_layer();
+
+                                            let st_clone = Arc::clone(&st_clone_panel3);
+
+                                            if month+1 == 13{
+                                                s.add_layer(create_panel(year+1, 1, Arc::clone(&st_clone)));
+                                            } else {
+                                                s.add_layer(create_panel(year, month+1, Arc::clone(&st_clone)));
+                                            }
+                                        })
+                                    )
                                 )
                             )
                         )
                     )
                 )
+                .title(month_to_string(month as i32)))
             )
-            .title(month_to_string(month as i32)))
         )
     )
 }
@@ -1261,9 +1367,9 @@ fn main() {
     let theme = custom_theme_from_cursive(&siv);
     siv.set_theme(theme);
 
-    siv.add_layer(Clock::new());
+    // siv.add_layer(Clock::new());
 
-    move_top(&mut siv, 106, 10);
+    // move_top(&mut siv, 106, 10);
 
     siv.add_layer(create_panel(year, month, data));
 
