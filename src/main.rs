@@ -7,16 +7,7 @@
 //https://docs.rs/cursive/0.14.1/cursive/view/trait.View.html
 //implement the needs re-layout function to improve performance
 
-
-// Crate Dependencies ---------------------------------------------------------
-// extern crate chrono;
-// extern crate cursive;
-// extern crate cursive_calendar_view;
-
 // STD Dependencies -----------------------------------------------------------
-use cursive::Printer;
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
@@ -32,12 +23,19 @@ use cursive::Cursive;
 use cursive::Vec2;
 #[macro_use] extern crate serde_derive;
 
+use cursive::Printer;
+use cursive::direction::Direction;
+use cursive::view::CannotFocus;
 use cursive::theme::*;
 use cursive::views::*;
 use cursive::view::Position;
 use cursive::views::NamedView;
 use cursive::views::LayerPosition;
 use cursive::event::{Callback, Event, EventResult, Key, MouseButton, MouseEvent};
+
+use log::LevelFilter;
+use simplelog::{Config, WriteLogger};
+
 mod util;
 
 const TOP: &str="   .oooo.  #   .o #   .oooo.  #   .oooo. #      .o  #  oooooooo#   .ooo   # ooooooooo# .ooooo.  #  .ooooo. #    ";
@@ -48,14 +46,14 @@ const M4: &str =" 888    888#  888 #   .dP'    #     `88b.#88ooo888oo#      |88 
 const M5: &str =" `88b  d88'#  888 # .oP     .o#o.   .88P #     888  #o.   .88P #`Y88   88P#   .8'    #`8.   .88P#    .88P' #    ";
 const BOT: &str="  `Y8bd8P' # o888o# 8888888888#`8bd88P'  #    o888o #`8bd88P'  # `88bod8' #  .8'     # `boood8' #  .oP'    #    ";
 
-fn ndays_in_month(year: i32, month: u32) -> u32 {
-    // the first day of the next month...
-    let (y, m) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
-    let d = NaiveDate::from_ymd_opt(y, m, 1).unwrap();
+// fn ndays_in_month(year: i32, month: u32) -> u32 {
+//     // the first day of the next month...
+//     let (y, m) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
+//     let d = NaiveDate::from_ymd_opt(y, m, 1).unwrap();
 
-    // ...is preceded by the last day of the original month
-    d.pred_opt().unwrap().day()
-}
+//     // ...is preceded by the last day of the original month
+//     d.pred_opt().unwrap().day()
+// }
 
 fn month_to_string(num : i32) -> String{
     match num{
@@ -205,7 +203,7 @@ impl View for Clock {
         }
     }    
 
-    fn on_event(&mut self, event: Event) -> EventResult {
+    fn on_event(&mut self, _event: Event) -> EventResult {
 
         self.update_time();
 
@@ -218,7 +216,6 @@ impl View for Clock {
         (71, 8).into()
     }
 }
-
 
 pub fn create_calendar(year : i32, month : u32, s : Arc<Mutex<Storage>>) -> LinearLayout {
 
@@ -253,9 +250,6 @@ pub fn create_calendar(year : i32, month : u32, s : Arc<Mutex<Storage>>) -> Line
 
     let calendar = CalendarView::<Utc>::new(Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap(), s);
 
-    // let temp: &mut Vec<TextEvent> = view.events.entry(view.view_date.clone()).or_default();
-
-    // linear_layout.add_child(calendar2.with_name("calendar"));
     linear_layout.add_child(calendar.with_name("calendar"));
 
     linear_layout
@@ -307,8 +301,6 @@ where
     }
 
     /// Sets a callback to be used when an a new date is visually selected.
-    ///
-    /// Chainable variant.
     pub fn on_select<F>(self, cb: F) -> Self
     where
         F: Fn(&mut Cursive, &DateTime<T>) + Send + Sync + 'static,
@@ -621,7 +613,7 @@ where
 
     fn on_event(&mut self, event: Event) -> EventResult {
 
-        //println!("current date pos: ({},{})", self.current_date.x, self.current_date.y);
+        log::info!("This is a debug message.");
 
         if !self.enabled {
             return EventResult::Ignored;
@@ -777,10 +769,8 @@ where
         }
     }
     
-    fn take_focus(&mut self, source: cursive::direction::Direction) -> Result<EventResult, cursive::view::CannotFocus> {
-        let _ = source;
-    
-        Err(cursive::view::CannotFocus)
+    fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
+        self.enabled.then(EventResult::consumed).ok_or(CannotFocus)
     }
     
 }
@@ -883,14 +873,9 @@ impl View for TodoList {
         (5, 10).into()
     }
 
-    // fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
-    //     if self.enabled {
-    //         return Ok();
-    //     }
-    //     else {
-    //         Err(());
-    //     }
-    // }
+    fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
+        self.enabled.then(EventResult::consumed).ok_or(CannotFocus)
+    }
 
     fn on_event(&mut self, event: Event) -> EventResult {
 
@@ -1009,7 +994,6 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                     // TODO move this outside as a global setting
                     let num_rows = 3;
-
                     let mut month = 1;
 
                     // generate each row 
@@ -1052,6 +1036,7 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
             )
         )
         .child(
+                // calendar with days
             NamedView::new("view2", Panel::new(create_calendar(year, month, Arc::clone(&st_clone_panel))
                 .child(Layer::new(
                     LinearLayout::horizontal()
@@ -1123,10 +1108,10 @@ fn date_to_cell<T: TimeZone>(date: &DateTime<T>) -> cursive::XY<i32>{
     return (column as i32, row as i32).into()
 }
 
-fn cell_to_day<T: TimeZone>(cell : cursive::XY<i32>) -> u32{
+// fn cell_to_day<T: TimeZone>(cell : cursive::XY<i32>) -> u32{
 
-    ((cell.y*7+(cell.x+1))-1) as u32
-}
+//     ((cell.y*7+(cell.x+1))-1) as u32
+// }
 
 fn date_from_cell_offset<T: TimeZone>(
     date: &DateTime<T>,
@@ -1146,8 +1131,6 @@ fn date_from_cell_offset<T: TimeZone>(
     //current_cell = (current_cell.x + x_offset, current_cell.y + y_offset).into();
 
     let offset = y_offset*7 + x_offset;
-
-    //
 
     while month < 0 {
         year -= 1;
@@ -1245,6 +1228,12 @@ fn main() {
     let utc: DateTime<Local> = Local::now();
     let year = utc.year();
     let month = utc.month();
+
+    // Create a log file
+    let log_file = File::create("app.log").unwrap();
+
+    // Initialize the logger to write to the file
+    WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
 
     // let data = Rc::new(RefCell::new(Storage::new(read())));
     let data = Arc::new(Mutex::new(Storage::new(read())));
