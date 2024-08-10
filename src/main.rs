@@ -822,11 +822,147 @@ where
 
 }
 
+pub struct TaskList {
+    enabled: bool,
+    size: Vec2,
+    focused: Option<Vec2>,
+    events_list: Vec<TextEvent>,
+}
+
+impl TaskList {
+
+    // Initializes the struct
+    pub fn new() -> Self {
+        Self {
+            enabled: true,
+            size: (0, 0).into(),
+            focused: None,
+            events_list: Vec::new(),
+        }
+    }
+
+    pub fn sync_events(&mut self, events: Vec<TextEvent>) {
+        self.events_list = events.clone();
+    }
+
+    pub fn get_events(&self) -> Vec<TextEvent> {
+        self.events_list.clone()
+    }
+
+    fn get_cell(&mut self, mouse_pos: Vec2, offset: Vec2) -> Option<Vec2> {
+        let diff = mouse_pos.map(|v| v as i64) - offset.map(|v| v as i64);
+        let pos : cursive::XY<i32> = ((diff.x/1) as i32, (diff.y/1) as i32).into();
+
+        Some((pos.x, pos.y).into())   
+    }
+
+    fn draw_list(&self, p: &Printer) {
+        if self.events_list.len() > 0{
+            for y in 1..self.events_list.len()+1 {
+                for x in 0..self.size.x {
+                    if x == 0 {
+                        if self.focused != None && self.focused.unwrap().x == 0 && self.focused.unwrap().y == y{
+                            p.with_color(ColorStyle::highlight(), |printer| {
+                                printer.print((x, y), "X");
+                            });
+                        }
+                        else{
+                            p.with_color(ColorStyle::primary(), |printer| {
+                                printer.print((x, y), "x");
+                            });
+                        }
+                    }
+                    if x == 2 || x == 3{
+                        if self.events_list[y-1].status == 1{
+                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90)), |printer| {
+                                printer.print((x, y), " ");
+                            });
+                        }
+                        else if self.events_list[y-1].status == 2{
+                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90)), |printer| {
+                                printer.print((x, y), " ");
+                            });
+                        }
+                        else{
+                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90)), |printer| {
+                                printer.print((x, y), " ");
+                            });
+                        }
+                    }
+                }
+            }   
+        }
+    }
+}
+
+impl View for TaskList {
+
+    fn draw(&self, printer: &Printer) {
+        self.draw_list(printer);
+    }
+
+    fn required_size(&mut self, _: Vec2) -> Vec2 {
+        self.size = (5, 10).into();
+        (5, 10).into()
+    }
+
+    fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
+        self.enabled.then(EventResult::consumed).ok_or(CannotFocus)
+    }
+
+    fn on_event(&mut self, event: Event) -> EventResult {
+
+        if !self.enabled {
+            return EventResult::Ignored;
+        }
+
+        match event {
+            Event::Mouse {
+                offset,
+                position,
+                event: MouseEvent::Press(_btn),
+            } => {
+                // Get cell for position
+                if let Some(pos) = self.get_cell(position, offset) {
+                    self.focused = Some(pos);
+                    return EventResult::Consumed(None);
+                }
+            }
+            Event::Mouse {
+                offset,
+                position,
+                event: MouseEvent::Release(btn),
+            } => {
+                // Get cell for position
+                if let Some(pos) = self.get_cell(position, offset) {
+                    if self.focused == Some(pos) {
+                        // We got a click here!
+                        match btn {
+                            MouseButton::Left => { 
+                                if (pos.x > 0 && pos.x < 4) && pos.y > 0 && self.events_list.len() > 0 && pos.y <= self.events_list.len(){
+
+                                    // completed logic
+
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                    self.focused = None;
+                }
+            }
+            _ => (),
+        }
+
+        return EventResult::Ignored;
+    }
+
+}
+
 pub struct TodoList{
     enabled: bool,
     size: Vec2,
     focused: Option<Vec2>,
-    // importance_list: Vec<i8>,
     events_list: Vec<TextEvent>,
 }
 
@@ -855,8 +991,8 @@ impl TodoList {
         let pos : cursive::XY<i32> = ((diff.x/1) as i32, (diff.y/1) as i32).into();
 
         Some((pos.x, pos.y).into())
-        
     }
+
     fn draw_list(&self, p: &Printer) {
         if self.events_list.len() > 0{
             for y in 1..self.events_list.len()+1 {
@@ -903,7 +1039,6 @@ impl View for TodoList {
     }
 
     fn required_size(&mut self, _: Vec2) -> Vec2 {
-        //(11, 5).into()
         self.size = (5, 10).into();
         (5, 10).into()
     }
@@ -994,7 +1129,6 @@ impl View for TodoList {
             }
             _ => (),
         }
-
         return EventResult::Ignored;
     }
 }
@@ -1133,7 +1267,7 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                                 let utc: DateTime<Local> = Local::now();
 
-                                
+                                let mut id_counter = 0;
 
                                 for (day, tasks) in global_tasks.iter().enumerate() { 
                                     // info!("sorting: {:?}", tasks);
@@ -1159,16 +1293,32 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                                             //TODO: when clicking on task toggle it as completed
 
+                                            let task_name: &str = &task.content.clone().to_owned();
+
                                             list.add_child(
                                                 "",
                                                 LinearLayout::horizontal()
                                                         .child(TextView::new(StyledString::styled(
                                                             format!("{}. ", task_counter+1), Style::secondary().combine(Effect::Bold))))
                                                         .child(TextView::new(StyledString::styled(
-                                                            format!("{}", task.content), Style::primary().combine(Effect::Simple))))
+                                                            format!("{}",task_name), Style::primary().combine(Effect::Simple))).with_name(format!("{id_counter}")))
+                                                        .child(Checkbox::new().on_change(move |s, checked| {
+                                                            // Enable/Disable the next field depending on this checkbox
+                                                            if checked {
+                                                                s.call_on_name(&format!("{id_counter}"), |view: &mut TextView| {
+                                                                    view.set_style(Style::secondary().combine(Effect::Strikethrough));
+                                                                });
+                                                            }
+                                                            else {
+                                                                s.call_on_name(&format!("{id_counter}"), |view: &mut TextView| {
+                                                                    view.set_style(Style::secondary().combine(Effect::Simple));
+                                                                });
+                                                            }
+                                                        }))
                                             );
 
                                             task_counter += 1;
+                                            id_counter += 1;
                                         }
                                     }
                                 }
