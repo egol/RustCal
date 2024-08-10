@@ -16,18 +16,13 @@ pictured above: version 0.1
 ## Features
  * Month by Month displaying
  * Basic Todo List functionality
+ * Terminal based UI
  * Flexible cross-platform TUI library that supports Linux, Windows and Mac
- * Basic saving functionality through a single accssesible json file (press 'k' to save)
- * An ascii art digital clock
-## Working on
- - Implimenting a weather forecast display using a user provided API key
+ * Basic saving functionality through a single json file (press 'k' to save)
+ * A realtime clock
 ## Goals
- - Todo-list event naming and ability to set them on specific time
+ - Todo-list time based granularity + striking off completed tasks
  - Custom UI theme (dark mode)
- - Complete code rewrite
- - Ability to grab events from other calendar applications
- - Windows notifications for events
- - Companion phone app
 
 ## Building the project
 
@@ -47,3 +42,12 @@ pictured above: version 0.1
    features = ["<Your backend here>"]
    ```
     3. use the command `cargo run` to launch the application
+
+## User Manual
+* `Left click` on mouse can be used to click on all buttons
+* `Right click` on mouse opens up todo list at the date clicked
+* `Arrow keys` are used to navigate without mouse
+* `Tab` cycles through all buttons
+* `Enter` opens todo list at selected day
+* `K` saves the state to a json file
+* Date in the top left corner navigates to current day in calendar when clicked
