@@ -1,9 +1,10 @@
 # RustCal
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.1-orange)](https://github.com/egol/RustCal)
+<!-- [![Version](https://img.shields.io/badge/version-v0.1-orange)](https://github.com/egol/RustCal) -->
+[![GitHub release](https://img.shields.io/github/release/egol/RustCal?include_prereleases=&sort=semver&color=orange)](https://github.com/egol/RustCal/releases/)
 
 
-TUI calendar app written in rust
+Terminal based calendar app written in rust
 #### Built with [Cursive](https://github.com/gyscos/cursive)
  
 <p align="center">

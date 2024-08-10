@@ -1,31 +1,26 @@
-// use chrono::prelude::*;
-
-// let numrows = num_days/7;
-
-
 //TODO
 //https://docs.rs/cursive/0.14.1/cursive/view/trait.View.html
 //implement the needs re-layout function to improve performance
 
 //TODO
-// 1. refactor that code snippet into a function
-// 2. fix bug with priority states and possibly rework the saving logic
 // 3. Add more priorities?
 // 4. Rework Readme for release
 // 5. Add todo list functionality?
 // 6. Add in pomodoro timer button
+// 7. at 12:37am time shows as 00:37
 
 // STD Dependencies -----------------------------------------------------------
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{prelude::*, Empty};
+use std::io::prelude::*;
 use std::fs;
 
 use std::sync::{Arc, Mutex};
 
 // External Dependencies ------------------------------------------------------
-use chrono::prelude::*;
+use chrono::{prelude::*, Duration};
+use chrono::{Datelike, Weekday};
 use cursive::traits::*;
 use cursive::Cursive;
 use cursive::Vec2;
@@ -42,35 +37,27 @@ use cursive::views::LayerPosition;
 use cursive::event::{Callback, Event, EventResult, Key, MouseButton, MouseEvent};
 use cursive::utils::markup::StyledString;
 
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use simplelog::{Config, WriteLogger};
 
 mod util;
 
-const TOP: &str=   "   .oooo.   #   .o  #   .oooo.   #   .oooo.  #      .o   #  oooooooo #   .ooo    # ooooooooo # .ooooo.   #  .ooooo.  #    ";
-const M1: &str =   "  d8P'`Y8b  # o888  # .dP\"\"Y88b  #.dP\"\"Y88b  #    .d88   # dP\"\"\"\"\"\"\" #  .88'     #d\"\"\"\"\"\"\"8' #d88'   `8. #888' `Y88. #    ";
-const M2: &str =r##" 888    888 #  888  #       |8P' #      |8P' #  .d'888   #d88888b.   # d88'      #      .8'  #Y88..  .8' #888    888 #    "##  ;
-const M3: &str =   " 888    888 #  888  #     .d8P'  #    <88b.  #.d'  888   #    `Y88b  #d888P\"Ybo. #     .8'   # `88888b.  # `Vbood888 #    " ;
-const M4: &str =   " 888    888 #  888  #   .dP'     #     `88b. #88ooo888oo #      |88  #Y88|   |88 #    .8'    #.8'  ``88b #      888' #    ";
-const M5: &str =   " `88b  d88' #  888  # .oP     .o #o.   .88P  #     888   #o.   .88P  #`Y88   88P #   .8'     #`8.   .88P #    .88P'  #    ";
-const BOT: &str=   "  `Y8bd8P'  # o888o # 8888888888 #`8bd88P'   #    o888o  #`8bd88P'   # `88bod8'  #  .8'      # `boood8'  #  .oP'     #    ";
+const TOP: &str=   "  .oooo.   #     .o    #  .oooo.   #   .oooo.  #      .o   #  oooooooo #   .ooo    # ooooooooo # .ooooo.   #  .ooooo.  #    ";
+const M1: &str =   " d8P'`Y8b  #   o888    #.dP\"\"Y88b  #.dP\"\"Y88b  #    .d88   # dP\"\"\"\"\"\"\" #  .88'     #d\"\"\"\"\"\"\"8' #d88'   `8. #888' `Y88. #    ";
+const M2: &str =r##"888    888 #    888    #      |8P' #      |8P' #  .d'888   #d88888b.   # d88'      #      .8'  #Y88..  .8' #888    888 #    "##  ;
+const M3: &str =   "888    888 #    888    #    .d8P'  #    <88b.  #.d'  888   #    `Y88b  #d888P\"Ybo. #     .8'   # `88888b.  # `Vbood888 #    " ;
+const M4: &str =   "888    888 #    888    #  .dP'     #     `88b. #88ooo888oo #      |88  #Y88|   |88 #    .8'    #.8'  ``88b #      888' #    ";
+const M5: &str =   "`88b  d88' #    888    #.oP     .o #o.   .88P  #     888   #o.   .88P  #`Y88   88P #   .8'     #`8.   .88P #    .88P'  #    ";
+const BOT: &str=   " `Y8bd8P'  #   o888o   #8888888888 #`8bd88P'   #    o888o  #`8bd88P'   # `88bod8'  #  .8'      # `boood8'  #  .oP'     #    ";
 
-const BADGE: &str= "
-██████╗  ██████╗
-██╔══██╗██╔════╝
-██████╔╝██║     
-██╔══██╗██║     
-██║  ██║╚██████╗
-╚═╝  ╚═╝ ╚═════╝
-";
-// fn ndays_in_month(year: i32, month: u32) -> u32 {
-//     // the first day of the next month...
-//     let (y, m) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
-//     let d = NaiveDate::from_ymd_opt(y, m, 1).unwrap();
-
-//     // ...is preceded by the last day of the original month
-//     d.pred_opt().unwrap().day()
-// }
+// const BADGE: &str= "
+// ██████╗  ██████╗
+// ██╔══██╗██╔════╝
+// ██████╔╝██║     
+// ██╔══██╗██║     
+// ██║  ██║╚██████╗
+// ╚═╝  ╚═╝ ╚═════╝
+// ";
 
 fn month_to_string(num : i32) -> String{
     match num{
@@ -108,7 +95,7 @@ fn abbr_month_to_string(num : i32) -> String{
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TextEvent{
     content: String,
     status: i8,
@@ -271,7 +258,7 @@ pub fn create_calendar(year : i32, month : u32, s : Arc<Mutex<Storage>>) -> Line
 
 pub struct CalendarView<T: TimeZone> {
     enabled: bool,
-    changed: bool,
+    /// date that is selected
     view_date: DateTime<T>,
     on_select: Option<DateCallback<T>>,
     size: Vec2,
@@ -279,6 +266,7 @@ pub struct CalendarView<T: TimeZone> {
     latest_date: Option<DateTime<T>>,
     date: DateTime<chrono::Local>,
     focused: Option<Vec2>,
+    /// todays date
     current_date: cursive::XY<i32>,
     storage: Arc<Mutex<Storage>>,
 }
@@ -292,7 +280,7 @@ where
     pub fn new(prev_date: DateTime<T>, s : Arc<Mutex<Storage>>) -> Self {
         Self {
             enabled: true,
-            changed: false,
+            // changed: false,
             size: (0, 0).into(),
             date: Local::now(),
             view_date: prev_date,
@@ -578,27 +566,8 @@ where
 
         //11 by 6 is the size of one cell
 
-        // mouse_pos
-        //     .checked_sub(offset)
-        //     .map(|pos| pos.map_x(|x| x / 11))
-        //     .map(|pos| pos.map_y(|y| y / 6))
-        //     .and_then(|pos| {
-        //         if pos.fits_in(self.size) {
-        //             Some(pos)
-        //         } else {
-        //             None
-        //         }
-        //     })852
         let diff = mouse_pos.map(|v| v as i64) - offset.map(|v| v as i64);
         let pos : cursive::XY<i32> = ((diff.x/11) as i32, (diff.y/6) as i32).into();
-
-        // println!("prev pos {}, {}\n\n", self.prev_date.x, self.prev_date.y);
-        //self.current_date = pos.clone();
-        // println!("mouse pos {}, {}", mouse_pos.x, mouse_pos.y);
-        // println!("offset {}, {}", offset.x, offset.y);
-        // println!("diffrence {}, {}", diff.x, diff.y);
-        //println!("position {}, {}\n\n", pos.x, pos.y);
-
         Some((pos.x, pos.y).into())
         
     }
@@ -656,14 +625,20 @@ where
                         // We got a click here!
                         match btn {
                             MouseButton::Left => { 
-                                if let Some(date) = date_from_cell_offset(&last_view_date, None, pos.x as i32 - viewdate_xy.x, pos.y as i32 - viewdate_xy.y, 0, 0) {
-                                    //println!("date: {:?}", date);
+                                if let Some(date) = date_from_cell_offset(
+                                    &last_view_date, None,
+                                    pos.x as i32 - viewdate_xy.x,
+                                    pos.y as i32 - viewdate_xy.y,
+                                    0, 0) {
                                     self.set_view_date(date);
                                 }
                             }
                             MouseButton::Right => {
-                                if let Some(date) = date_from_cell_offset(&last_view_date, None, pos.x as i32 - viewdate_xy.x, pos.y as i32 - viewdate_xy.y, 0, 0) {
-                                    //println!("date: {:?}", date);
+                                if let Some(date) = date_from_cell_offset(
+                                    &last_view_date, None,
+                                    pos.x as i32 - viewdate_xy.x,
+                                    pos.y as i32 - viewdate_xy.y,
+                                    0, 0) {
                                     self.set_view_date(date);
                                 }   
 
@@ -675,18 +650,12 @@ where
                                 return EventResult::Consumed(Some(Callback::from_fn(move |s: &mut Cursive| {
 
                                     let mut list: TodoList = TodoList::new();
-                                    // for a in events.iter(){
-                                    //     list.add_status(a.status);
-                                    // }
                                     list.sync_events(events.clone());
 
                                     create_todo_list::<T>(list, s);
                                     
                                 })));
                             }
-                            // MouseButton::Middle => {
-                            //     return self.auto_reveal(pos);
-                            // }
                             _ => (),
                         }
                     }
@@ -707,19 +676,16 @@ where
             ),
             Event::Key(Key::Enter) => {
 
-                // TODO this should be generalized and used for both the mouse right click and key click
-
                 let mut storage_ref_mut = self.storage.lock().unwrap();
 
                 let events = storage_ref_mut.events.entry(
-                    NaiveDate::from_ymd_opt(self.view_date.year(), self.view_date.month(), self.view_date.day()).unwrap()).or_default().clone();
+                    NaiveDate::from_ymd_opt(
+                        self.view_date.year(), self.view_date.month(),
+                        self.view_date.day()).unwrap()).or_default().clone();
 
                 return EventResult::Consumed(Some(Callback::from_fn(move |s| {
 
                     let mut list: TodoList = TodoList::new();
-                    // for a in events.iter(){
-                    //     list.add_status(a.status);
-                    // }
                     list.sync_events(events.clone());
 
                     create_todo_list::<T>(list, s);
@@ -761,7 +727,6 @@ where
     
 }
 
-// TODO causing bug when clicking on text edit box
 pub fn create_event_editor<T: TimeZone + Send + Sync + 'static>(content : String, i : usize) -> ResizedView<EditView>
 where
     T: TimeZone + Send + Sync + 'static,
@@ -798,16 +763,13 @@ where
                     // This part loads any existing events from the storage
                     .delimiter()
                     .with(|list| {
+
+                        // list.add_child("", DummyView);
+
                         // generate the children with a for loop
                         for (i, value) in events.iter().enumerate() {
-                            list.add_child("", LinearLayout::horizontal()
-                                // .child(
-                                //     TextView::new("CONTENT!")
-                                // )
-                                .child(
-                                    // "",// &format!("Event {}:", len),
-                                    create_event_editor::<T>(value.content.clone(), i),
-                                )
+                            list.add_child("",
+                                create_event_editor::<T>(value.content.clone(), i),
                             );
                         }
                     }))
@@ -828,9 +790,6 @@ where
 
                             events = storage_ref_mut.events.entry(
                                 NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap()).or_default().clone();
-                
-                            // add this new event to the todolist
-                            // todo_list.sync_events(events);
 
                         });
 
@@ -852,7 +811,7 @@ where
                             view.sync_events(events.clone());
                         });
                         
-                    }))
+                    }))//.max_height(15)
         ))
         .title("Todo")
         
@@ -1027,11 +986,6 @@ impl View for TodoList {
                                     })));
                                 }
                             }
-                            // MouseButton::Right => {
-                            // }
-                            // MouseButton::Middle => {
-                            //     return self.auto_reveal(pos);
-                            // }
                             _ => (),
                         }
                     }
@@ -1045,8 +999,49 @@ impl View for TodoList {
     }
 }
 
-// creates the main panel which includes the month selection and the days of the month
-fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<LinearLayout> {
+// creates the Vec of "coming up" tasks taken from the todo list
+fn create_task_list(s: Arc<Mutex<Storage>>) -> Vec<Vec<TextEvent>> {
+
+    // A list of all events in the next 7 days
+    let mut week_events: Vec<Vec<TextEvent>> = Vec::new();
+
+    let mut storage_ref_mut = s.lock().unwrap();
+
+    // get current date
+    let utc: DateTime<Local> = Local::now();
+
+    // need to go through the next 7 days where the first day is the present
+    for i in 0..7 {
+        week_events.push(storage_ref_mut.events.entry(
+            NaiveDate::from_ymd_opt(utc.year(), utc.month(), utc.day() + i).unwrap()).or_default().clone());
+    }
+
+    // start creating the list
+    // sort the tasks by days, then priorities, then alphabetical
+    for events in &mut week_events {
+        events.sort_by(|a, b| {
+
+            // First, compare by status in descending order
+            let status_cmp = b.status.cmp(&a.status);
+            
+            // If status is equal, compare alphabetically by content
+            if status_cmp == std::cmp::Ordering::Equal {
+                a.content.cmp(&b.content)
+            } else {
+                status_cmp
+            }
+        });
+    }
+
+    return week_events
+
+}
+
+
+
+
+// creates the main panel which includes the entire calendar, clock and other components
+fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<LinearLayout>{
 
     //TODO MOVE OUT OF FUNCTION
     let utc: DateTime<Local> = Local::now();
@@ -1054,10 +1049,12 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
     let c_month = utc.month();
     let c_day = utc.day();
 
+    // TODO: must be a better way of organizing/doing this
     let st_clone_panel = Arc::clone(&st);
     let st_clone_panel2 = Arc::clone(&st);
     let st_clone_panel3 = Arc::clone(&st);
     let st_clone_panel4 = Arc::clone(&st);
+    let st_clone_panel5 = Arc::clone(&st);
 
     // create the entire calendar display
     Panel::new(
@@ -1080,7 +1077,9 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
                 )
             )).min_width(23))
 
-            .child(NamedView::new("clock", Panel::new(Clock::new())))
+            .child(NamedView::new("clock", 
+            Panel::new(PaddedView::lrtb(3, 0, 0, 0, Clock::new())).max_width(80)
+            ))
         )
         .child(
             LinearLayout::horizontal()
@@ -1119,23 +1118,76 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
                     // spacer
                     .child(Layer::new(TextView::new(" ")))
 
-                    // create the current date button
-                    // .child(Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
-                        
-                    //     s.pop_layer();
+                    // Task list
+                    .child(
+                    Panel::new(
+                            // TODO:
+                            // move this into its own custom class with a draw call and event handling
+                            // in order to update the task list as tasks are created
+                            // also in order to add the custom task color printing and completion toggle
+                        ListView::new()
+                            .delimiter()
+                            .with(|list| {
 
-                    //     let st_clone = Arc::clone(&st);
+                                let global_tasks = create_task_list(st_clone_panel5);
 
-                    //     s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone)));
+                                let utc: DateTime<Local> = Local::now();
 
-                    // })))
+                                
+
+                                for (day, tasks) in global_tasks.iter().enumerate() { 
+                                    // info!("sorting: {:?}", tasks);
+
+                                    if !tasks.is_empty() {
+                                        let task_date = utc + Duration::days(day as i64);
+
+                                        if day != 0 {
+                                            list.add_child("", DummyView);
+                                        }
+
+                                        // seperate by day
+                                        list.add_child("",
+                                            TextView::new(StyledString::styled(
+                                            format!("{}", format_task_date(task_date)), 
+                                                    Style::secondary().combine(Effect::Bold))));
+
+                                        list.add_child("", DummyView);
+
+                                        let mut task_counter = 0;
+
+                                        for task in tasks {
+
+                                            //TODO: when clicking on task toggle it as completed
+
+                                            list.add_child(
+                                                "",
+                                                LinearLayout::horizontal()
+                                                        .child(TextView::new(StyledString::styled(
+                                                            format!("{}. ", task_counter+1), Style::secondary().combine(Effect::Bold))))
+                                                        .child(TextView::new(StyledString::styled(
+                                                            format!("{}", task.content), Style::primary().combine(Effect::Simple))))
+                                            );
+
+                                            task_counter += 1;
+                                        }
+                                    }
+                                }
+                            })
+                            .scrollable()
+                                
+                        ).title("Next 7 Days").max_height(25)
+                    )
 
                     // spacer
-                    .child(Layer::new(TextView::new(" ")))
+                    // .child(Layer::new(TextView::new(" ")))
 
-                    // .child(Panel::new(Layer::new(TextView::new("").center().fixed_width(19))
-                    // ).title("On this day"))
-                    ).title(year.to_string())
+                    .child(Panel::new(Button::new("Pomodoro Timer", move|s| {
+                        
+                        
+        
+                    })))
+
+                    ).title(year.to_string()).max_width(23)
                 )
             )
             .child(
@@ -1212,11 +1264,8 @@ fn date_to_cell<T: TimeZone>(date: &DateTime<T>) -> cursive::XY<i32>{
     return (column as i32, row as i32).into()
 }
 
-// fn cell_to_day<T: TimeZone>(cell : cursive::XY<i32>) -> u32{
-
-//     ((cell.y*7+(cell.x+1))-1) as u32
-// }
-
+// calculates the date by using the y and x coordinates of a calendar date
+// helper function for converting mouse position to a date selection
 fn date_from_cell_offset<T: TimeZone>(
     date: &DateTime<T>,
     set_day: Option<i32>,
@@ -1268,37 +1317,9 @@ fn date_from_cell_offset<T: TimeZone>(
         d.with_day0(day as u32)
     }
 
-    // let mut day = set_day.unwrap_or_else(|| cmp::min(num_days - 1, date.day() as u32));
-
-    // day += offset;
-
-    // let d = date
-    //     .with_day0(0)?
-    //     .with_year(year)?
-    //     .with_month0(month as u32)?;
-
-    // if day < 0 {
-    //     if month-1 < 0 {
-    //         day += ndays_in_month(year, 12);
-    //         date_from_cell_offset(&d, Some(day), 0, 0, 12, -1)
-    //     }
-    //     else{
-    //         day += ndays_in_month(year, (month as u32)-1);
-    //         date_from_cell_offset(&d, Some(day), 0, 0, -1, 0)
-    //     }
-    // } else if day >= num_days {
-    //     day -= num_days;
-    //     if month+1 >= 12 {
-    //         date_from_cell_offset(&d, Some(day), 0, 0, -12, 1)
-    //     }
-    //     else{
-    //         date_from_cell_offset(&d, Some(day), 0, 0, 1, 0)
-    //     }
-    // } else {
-    //     d.with_day0(day as u32)
-    // }
 }
 
+// placeholder method for future theme managment
 fn custom_theme_from_cursive(siv: &Cursive) -> Theme {
     // We'll return the current theme with a small modification.
     let theme = siv.current_theme().clone();
@@ -1306,11 +1327,16 @@ fn custom_theme_from_cursive(siv: &Cursive) -> Theme {
     theme
 }
 
+// Writes storage hash map to json
+// responsible for saving user data
+// TODO: allow for save file naming and directory selection
 fn write(s: &HashMap<NaiveDate, Vec<TextEvent>>) {
     let j = serde_json::to_string(&s).expect("could not serialize hashmap");
     fs::write("test.json", j).expect("Unable to write file");
 }
 
+// Converts json save file back into a hashmap
+// that is used to load previous data
 fn read() -> HashMap<NaiveDate, Vec<TextEvent>>{
     if let Ok(mut f) = File::open("test.json") {
         let mut contents = String::new();
@@ -1328,21 +1354,52 @@ fn read() -> HashMap<NaiveDate, Vec<TextEvent>>{
     }
 }
 
+/// Outputs a custom date fromat given a DateTime
+/// 8/9/2024 becomes: Friday, 9th
+fn format_task_date(date: DateTime<Local>) -> String {
+    // Get the weekday and day of the month
+    let weekday = match date.weekday() {
+        Weekday::Mon => "Monday",
+        Weekday::Tue => "Tuesday",
+        Weekday::Wed => "Wednesday",
+        Weekday::Thu => "Thursday",
+        Weekday::Fri => "Friday",
+        Weekday::Sat => "Saturday",
+        Weekday::Sun => "Sunday",
+    };
+    
+    let day_of_month = date.day();
+
+    // Convert the day of the month to a string with a suffix (e.g., "13th")
+    let day_suffix = match day_of_month {
+        1 | 21 | 31 => "st",
+        2 | 22 => "nd",
+        3 | 23 => "rd",
+        _ => "th",
+    };
+
+    // Format the date as "Friday, 13th"
+    format!(
+        "{}, {}{}",
+        weekday,
+        day_of_month,
+        day_suffix
+    )
+}
+
 fn main() {
     let utc: DateTime<Local> = Local::now();
     let year = utc.year();
     let month = utc.month();
 
     // Create a log file
-    // let log_file = File::create("app.log").unwrap();
+    let log_file = File::create("app.log").unwrap();
 
     // Initialize the logger to write to the file
-    // WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
+    WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
 
     // let data = Rc::new(RefCell::new(Storage::new(read())));
     let data = Arc::new(Mutex::new(Storage::new(read())));
-
-    //println!("{}", utc.day());
 
     let mut siv = cursive::default();
 
@@ -1364,10 +1421,6 @@ fn main() {
 
     let theme = custom_theme_from_cursive(&siv);
     siv.set_theme(theme);
-
-    // siv.add_layer(Clock::new());
-
-    // move_top(&mut siv, 106, 10);
 
     siv.add_layer(create_panel(year, month, data));
 
