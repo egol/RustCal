@@ -21,7 +21,9 @@ use std::sync::{Arc, Mutex};
 // External Dependencies ------------------------------------------------------
 use chrono::{prelude::*, Duration};
 use chrono::{Datelike, Weekday};
+// use cursive::backends::crossterm::crossterm::event;
 use cursive::traits::*;
+use cursive::utils::span::SpannedStr;
 use cursive::Cursive;
 use cursive::Vec2;
 #[macro_use] extern crate serde_derive;
@@ -34,7 +36,7 @@ use cursive::views::*;
 use cursive::view::Position;
 use cursive::views::NamedView;
 use cursive::views::LayerPosition;
-use cursive::event::{Callback, Event, EventResult, Key, MouseButton, MouseEvent};
+use cursive::event::{Callback, Event, EventResult, EventTrigger, Key, MouseButton, MouseEvent};
 use cursive::utils::markup::StyledString;
 
 use log::{info, LevelFilter};
@@ -99,6 +101,7 @@ fn abbr_month_to_string(num : i32) -> String{
 pub struct TextEvent{
     content: String,
     status: i8,
+    completed: bool,
 }
 
 impl TextEvent {
@@ -106,6 +109,7 @@ impl TextEvent {
         Self {
             content: s,
             status: 0,
+            completed: false,
         }
     }
 
@@ -452,9 +456,7 @@ where
     }
 
     fn draw_cell (&self, p: &Printer, offset_x : u8, offset_y : u8, day : String, color : ColorStyle, nums : Vec<i32>, past : bool) {
-        // let x_max = p.size.x as u8;
-        // let y_max = p.size.y as u8;
-
+        // sets the size of one calendar cell
         let x_max : u8 = 10;
         let y_max : u8 = 5;
 
@@ -731,19 +733,43 @@ pub fn create_event_editor<T: TimeZone + Send + Sync + 'static>(content : String
 where
     T: TimeZone + Send + Sync + 'static,
     CalendarView<T>: View,
-{
+{   
+
+    // TODO: Causing crash after removing element and then trying to edit
     EditView::new()
-        .on_edit(move |s, text, _cursor| {
+        .on_edit(move |s: &mut Cursive, text, _cursor| {
+
+            let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
+
             s.call_on_name("calendar", |view: &mut CalendarView<T>| {
 
                 let mut storage_ref_mut = view.storage.lock().unwrap();
 
                 storage_ref_mut.events.entry(NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap())
                     .or_insert(Vec::new())[i].content = String::from(text);
+
+                events_clone = storage_ref_mut.events.clone();
+            
             });
+
+            update_task_list_view(s, events_clone);
+
         })
         .content(content)
         .fixed_width(25)
+}
+
+/// update tasklist by recreating it
+fn update_task_list_view(s: &mut Cursive, events: HashMap<NaiveDate, Vec<TextEvent>>) {
+
+    s.call_on_name("tasklist", |view: &mut LinearLayout| {
+        view.remove_child(0);
+        view.add_child(Panel::new(
+            create_task_list_view(events)
+            .scrollable()
+        ).title("Next 7 Days").max_height(25))
+    });
+
 }
 
 // creates the todo list popup
@@ -778,6 +804,8 @@ where
 
                         let mut events: Vec<TextEvent> = Vec::new();
 
+                        let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
+
                         // creates the entries in the calendar cells + storage
                         s.call_on_name("calendar", |view: &mut CalendarView<T>| {
 
@@ -790,8 +818,12 @@ where
 
                             events = storage_ref_mut.events.entry(
                                 NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap()).or_default().clone();
+                            
+                            events_clone = storage_ref_mut.events.clone()
 
                         });
+
+                        update_task_list_view(s, events_clone);
 
                         // creates the entries in the todo popup
                         s.call_on_name("todo", |view: &mut NamedView<ListView>| {
@@ -826,71 +858,66 @@ pub struct TaskList {
     enabled: bool,
     size: Vec2,
     focused: Option<Vec2>,
-    events_list: Vec<TextEvent>,
+    text_event: TextEvent,
+    date: DateTime<Local>,
+    index: usize,
+    id: i32,
 }
 
 impl TaskList {
 
     // Initializes the struct
-    pub fn new() -> Self {
+    pub fn new(date: DateTime<Local>, index: usize, event: TextEvent, id: i32) -> Self {
         Self {
             enabled: true,
             size: (0, 0).into(),
             focused: None,
-            events_list: Vec::new(),
+            text_event: event,
+            date: date,
+            index: index,
+            id: id,
         }
     }
 
-    pub fn sync_events(&mut self, events: Vec<TextEvent>) {
-        self.events_list = events.clone();
-    }
-
-    pub fn get_events(&self) -> Vec<TextEvent> {
-        self.events_list.clone()
-    }
-
-    fn get_cell(&mut self, mouse_pos: Vec2, offset: Vec2) -> Option<Vec2> {
-        let diff = mouse_pos.map(|v| v as i64) - offset.map(|v| v as i64);
-        let pos : cursive::XY<i32> = ((diff.x/1) as i32, (diff.y/1) as i32).into();
-
-        Some((pos.x, pos.y).into())   
-    }
-
     fn draw_list(&self, p: &Printer) {
-        if self.events_list.len() > 0{
-            for y in 1..self.events_list.len()+1 {
-                for x in 0..self.size.x {
-                    if x == 0 {
-                        if self.focused != None && self.focused.unwrap().x == 0 && self.focused.unwrap().y == y{
-                            p.with_color(ColorStyle::highlight(), |printer| {
-                                printer.print((x, y), "X");
-                            });
-                        }
-                        else{
-                            p.with_color(ColorStyle::primary(), |printer| {
-                                printer.print((x, y), "x");
-                            });
-                        }
+        // info!("{}", self.text_event.content);
+        if self.text_event.content.len() > 0{
+            for x in 0..self.size.x {
+
+                let background_color;
+
+                if self.text_event.status == 1{
+                    background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90));
+                }
+                else if self.text_event.status == 2{
+                    background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90));
+                }
+                else{
+                    background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90));
+                }
+
+                if x == 1 {
+                    if self.text_event.completed {
+                        p.with_color(background_color, |printer| {
+                            printer.print((x, 0), "X");
+                        });
                     }
-                    if x == 2 || x == 3{
-                        if self.events_list[y-1].status == 1{
-                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90)), |printer| {
-                                printer.print((x, y), " ");
-                            });
-                        }
-                        else if self.events_list[y-1].status == 2{
-                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90)), |printer| {
-                                printer.print((x, y), " ");
-                            });
-                        }
-                        else{
-                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90)), |printer| {
-                                printer.print((x, y), " ");
-                            });
-                        }
+                    else {
+                        p.with_color(background_color, |printer| {
+                            printer.print((x, 0), " ");
+                        });
                     }
                 }
-            }   
+                else {
+                    p.with_color(background_color, |printer| {
+                        printer.with_style(Style::primary().combine(Effect::Bold),|printer| {
+                            printer.print(
+                            (x, 0), 
+                            format!("{}", self.index+1).as_str());
+                        })
+                    });
+                }
+            }
         }
     }
 }
@@ -902,8 +929,8 @@ impl View for TaskList {
     }
 
     fn required_size(&mut self, _: Vec2) -> Vec2 {
-        self.size = (5, 10).into();
-        (5, 10).into()
+        self.size = (2, 1).into();
+        (2, 1).into()
     }
 
     fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
@@ -920,37 +947,59 @@ impl View for TaskList {
             Event::Mouse {
                 offset,
                 position,
-                event: MouseEvent::Press(_btn),
-            } => {
-                // Get cell for position
-                if let Some(pos) = self.get_cell(position, offset) {
-                    self.focused = Some(pos);
-                    return EventResult::Consumed(None);
-                }
-            }
-            Event::Mouse {
-                offset,
-                position,
                 event: MouseEvent::Release(btn),
             } => {
-                // Get cell for position
-                if let Some(pos) = self.get_cell(position, offset) {
-                    if self.focused == Some(pos) {
-                        // We got a click here!
-                        match btn {
-                            MouseButton::Left => { 
-                                if (pos.x > 0 && pos.x < 4) && pos.y > 0 && self.events_list.len() > 0 && pos.y <= self.events_list.len(){
+                // if self.focused == Some(pos) {
+                match btn {
+                    MouseButton::Left => { 
+                        self.text_event.completed = !self.text_event.completed;
+                        let completed_status = self.text_event.completed;
 
-                                    // completed logic
+                        let text_event_date = self.date;
 
-                                }
+                        let text_event_index = self.index;
+                        let id = self.id;
+
+                        info!("{:?}", self.text_event);
+
+                        return EventResult::Consumed(Some(Callback::from_fn(move |s| {
+
+                            s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
+
+                                let mut storage_ref_mut = view.storage.lock().unwrap();
+
+                                storage_ref_mut.events.entry(
+                                    NaiveDate::from_ymd_opt(text_event_date.year(), text_event_date.month(), text_event_date.day()).unwrap())
+                                    .or_insert(Vec::new())[text_event_index].completed = completed_status;
+                                
+                                info!("{:?}", storage_ref_mut.events.entry(
+                                    NaiveDate::from_ymd_opt(text_event_date.year(), text_event_date.month(), text_event_date.day()).unwrap())
+                                    .or_insert(Vec::new())[text_event_index]);
+
+                            });
+
+                            // need to refresh the TaskView in order to render the changes
+                            if completed_status {
+                                s.call_on_name(&format!("{id}"), |view: &mut TextView| {
+                                    view.set_style(Style::primary().combine(Effect::Strikethrough));
+                                });
                             }
-                            _ => (),
-                        }
+                            else {
+                                s.call_on_name(&format!("{id}"), |view: &mut TextView| {
+                                    // this line is necessary to force refresh the text style
+                                    view.set_content(view.get_content().source());
+
+                                    view.set_style(Style::primary().combine(Effect::Simple));
+                                });
+                            }
+
+                        })));
                     }
-                    self.focused = None;
+                    _ => (),
                 }
-            }
+                // }
+                // self.focused = None;
+        }
             _ => (),
         }
 
@@ -1076,6 +1125,7 @@ impl View for TodoList {
                         // We got a click here!
                         match btn {
                             MouseButton::Left => { 
+                                // If the status button is pressed on the todo
                                 if (pos.x > 0 && pos.x < 4) && pos.y > 0 && self.events_list.len() > 0 && pos.y <= self.events_list.len(){
                                     if self.events_list[pos.y-1].status < 2 {
                                         self.events_list[pos.y-1].status += 1;
@@ -1088,6 +1138,8 @@ impl View for TodoList {
 
                                     return EventResult::Consumed(Some(Callback::from_fn(move |s| {
 
+                                        let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
+
                                         s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
 
                                             let mut storage_ref_mut = view.storage.lock().unwrap();
@@ -1095,21 +1147,38 @@ impl View for TodoList {
                                             storage_ref_mut.events.entry(
                                                 NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap())
                                                 .or_insert(Vec::new())[pos.y-1].status = status;
+
+                                            events_clone = storage_ref_mut.events.clone();
+
                                         });
+
+                                        update_task_list_view(s, events_clone);
 
                                     })));
                                 }
+                                // If x button is pressed on todo list
                                 else if pos.x == 0 && pos.y > 0 && self.events_list.len() > 0 && pos.y <= self.events_list.len(){
                                     self.events_list.remove(pos.y-1);
 
                                     return EventResult::Consumed(Some(Callback::from_fn(move |s| {
+
+                                        // TODO: has to be a cleaner way of updating the task list based off of storage update
+                                        // TODO: cant edit other tasks after deleting a task??
+                                        let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
+
                                         s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
 
                                             let mut storage_ref_mut = view.storage.lock().unwrap();
 
+                                            info!("{:?}", storage_ref_mut.events);
+
                                             storage_ref_mut.events.entry(NaiveDate::from_ymd_opt(view.view_date.year(),
                                                 view.view_date.month(), view.view_date.day()).unwrap())
                                                 .or_default().remove(pos.y-1);
+
+                                            events_clone = storage_ref_mut.events.clone();
+
+                                            info!("{:?}", storage_ref_mut.events);
 
                                         });
 
@@ -1117,6 +1186,8 @@ impl View for TodoList {
                                             let mut view = view.get_mut();
                                             view.remove_child(pos.y);
                                         });
+
+                                        update_task_list_view(s, events_clone);
                                         
                                     })));
                                 }
@@ -1134,43 +1205,118 @@ impl View for TodoList {
 }
 
 // creates the Vec of "coming up" tasks taken from the todo list
-fn create_task_list(s: Arc<Mutex<Storage>>) -> Vec<Vec<TextEvent>> {
+fn create_task_list(mut events: HashMap<NaiveDate, Vec<TextEvent>>) -> Vec<Vec<TextEvent>> {
 
     // A list of all events in the next 7 days
     let mut week_events: Vec<Vec<TextEvent>> = Vec::new();
-
-    let mut storage_ref_mut = s.lock().unwrap();
 
     // get current date
     let utc: DateTime<Local> = Local::now();
 
     // need to go through the next 7 days where the first day is the present
     for i in 0..7 {
-        week_events.push(storage_ref_mut.events.entry(
+        week_events.push(events.entry(
             NaiveDate::from_ymd_opt(utc.year(), utc.month(), utc.day() + i).unwrap()).or_default().clone());
     }
 
+    // TODO: This sorting step makes identifying the events difficult 
+    // readd in the future
     // start creating the list
     // sort the tasks by days, then priorities, then alphabetical
-    for events in &mut week_events {
-        events.sort_by(|a, b| {
+    // for events in &mut week_events {
+    //     events.sort_by(|a, b| {
 
-            // First, compare by status in descending order
-            let status_cmp = b.status.cmp(&a.status);
+    //         // First, compare by status in descending order
+    //         let status_cmp = b.status.cmp(&a.status);
             
-            // If status is equal, compare alphabetically by content
-            if status_cmp == std::cmp::Ordering::Equal {
-                a.content.cmp(&b.content)
-            } else {
-                status_cmp
-            }
-        });
-    }
+    //         // If status is equal, compare alphabetically by content
+    //         if status_cmp == std::cmp::Ordering::Equal {
+    //             a.content.cmp(&b.content)
+    //         } else {
+    //             status_cmp
+    //         }
+    //     });
+    // }
 
     return week_events
 
 }
 
+fn create_task_list_view(events: HashMap<NaiveDate, Vec<TextEvent>>) -> ListView {
+
+    ListView::new()
+        .delimiter()
+        .with(|list| {
+
+            let global_tasks = create_task_list(events);
+
+            let utc: DateTime<Local> = Local::now();
+
+            let mut id_counter = 0;
+
+            for (day, tasks) in global_tasks.iter().enumerate() { 
+
+                if !tasks.is_empty() {
+                    let task_date = utc + Duration::days(day as i64);
+
+                    if day != 0 {
+                        list.add_child("", DummyView);
+                    }
+
+                    // seperate by day
+                    list.add_child("",
+                        TextView::new(StyledString::styled(
+                        format!("{}", format_task_date(task_date)), 
+                                Style::secondary().combine(Effect::Bold))));
+
+                    list.add_child("", DummyView);
+
+                    let mut task_counter = 0;
+
+                    for task in tasks {
+
+                        if task.content.len() > 0 {
+
+                            let task_name: &str = &task.content.clone().to_owned();
+
+                            // TODO: code could be less redundant
+                            if task.completed {
+
+                                list.add_child(
+                                    "",
+                                    LinearLayout::horizontal()
+                                            .child(TaskList::new(task_date, task_counter, task.clone(), id_counter))
+                                            .child(TextView::new(" "))
+                                            .child(TextView::new(StyledString::styled(
+                                                format!("{}", task_name), Style::primary().combine(Effect::Strikethrough)))
+                                                .with_name(format!("{id_counter}"))
+                                            )
+                                    );
+
+                            }
+                            else {
+
+                                list.add_child(
+                                "",
+                                LinearLayout::horizontal()
+                                        .child(TaskList::new(task_date, task_counter, task.clone(), id_counter))
+                                        .child(TextView::new(" "))
+                                        .child(TextView::new(StyledString::styled(
+                                            format!("{}", task_name), Style::primary().combine(Effect::Simple)))
+                                            .with_name(format!("{id_counter}"))
+                                        )
+                                );
+                            }
+
+                            task_counter += 1;
+                            id_counter += 1;
+                        }
+                    }
+                }
+            }
+        })
+
+}
 
 
 
@@ -1188,7 +1334,12 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
     let st_clone_panel2 = Arc::clone(&st);
     let st_clone_panel3 = Arc::clone(&st);
     let st_clone_panel4 = Arc::clone(&st);
-    let st_clone_panel5 = Arc::clone(&st);
+
+    let events_clone: HashMap<NaiveDate, Vec<TextEvent>>;
+    {   
+        let st_clone_panel5: Arc<Mutex<Storage>> = Arc::clone(&st);
+        events_clone = st_clone_panel5.lock().unwrap().events.clone();
+    }
 
     // create the entire calendar display
     Panel::new(
@@ -1209,7 +1360,7 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
     
                 }))
                 )
-            )).min_width(23))
+            )).min_width(27))
 
             .child(NamedView::new("clock", 
             Panel::new(PaddedView::lrtb(3, 0, 0, 0, Clock::new())).max_width(80)
@@ -1224,6 +1375,7 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                         // TODO move this outside as a global setting
                         let num_rows = 3;
+                        
                         let mut month = 1;
 
                         // generate each row 
@@ -1231,6 +1383,8 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                             column.add_child(LinearLayout::horizontal()
                                 .with(|row| {
+
+                                    row.add_child(TextView::new("  "));
 
                                     // generate the children with a for loop
                                     for _columns in 0..num_rows {
@@ -1244,6 +1398,8 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                                         month += 1;
                                     }
+
+                                    row.add_child(TextView::new("  "));
                                 })
                             )
 
@@ -1254,78 +1410,12 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                     // Task list
                     .child(
+                    LinearLayout::vertical().child(
                     Panel::new(
-                            // TODO:
-                            // move this into its own custom class with a draw call and event handling
-                            // in order to update the task list as tasks are created
-                            // also in order to add the custom task color printing and completion toggle
-                        ListView::new()
-                            .delimiter()
-                            .with(|list| {
-
-                                let global_tasks = create_task_list(st_clone_panel5);
-
-                                let utc: DateTime<Local> = Local::now();
-
-                                let mut id_counter = 0;
-
-                                for (day, tasks) in global_tasks.iter().enumerate() { 
-                                    // info!("sorting: {:?}", tasks);
-
-                                    if !tasks.is_empty() {
-                                        let task_date = utc + Duration::days(day as i64);
-
-                                        if day != 0 {
-                                            list.add_child("", DummyView);
-                                        }
-
-                                        // seperate by day
-                                        list.add_child("",
-                                            TextView::new(StyledString::styled(
-                                            format!("{}", format_task_date(task_date)), 
-                                                    Style::secondary().combine(Effect::Bold))));
-
-                                        list.add_child("", DummyView);
-
-                                        let mut task_counter = 0;
-
-                                        for task in tasks {
-
-                                            //TODO: when clicking on task toggle it as completed
-
-                                            let task_name: &str = &task.content.clone().to_owned();
-
-                                            list.add_child(
-                                                "",
-                                                LinearLayout::horizontal()
-                                                        .child(TextView::new(StyledString::styled(
-                                                            format!("{}. ", task_counter+1), Style::secondary().combine(Effect::Bold))))
-                                                        .child(TextView::new(StyledString::styled(
-                                                            format!("{}",task_name), Style::primary().combine(Effect::Simple))).with_name(format!("{id_counter}")))
-                                                        .child(Checkbox::new().on_change(move |s, checked| {
-                                                            // Enable/Disable the next field depending on this checkbox
-                                                            if checked {
-                                                                s.call_on_name(&format!("{id_counter}"), |view: &mut TextView| {
-                                                                    view.set_style(Style::secondary().combine(Effect::Strikethrough));
-                                                                });
-                                                            }
-                                                            else {
-                                                                s.call_on_name(&format!("{id_counter}"), |view: &mut TextView| {
-                                                                    view.set_style(Style::secondary().combine(Effect::Simple));
-                                                                });
-                                                            }
-                                                        }))
-                                            );
-
-                                            task_counter += 1;
-                                            id_counter += 1;
-                                        }
-                                    }
-                                }
-                            })
+                            // DummyView
+                            create_task_list_view(events_clone)
                             .scrollable()
-                                
-                        ).title("Next 7 Days").max_height(25)
+                        ).title("Next 7 Days").max_height(25)).with_name("tasklist")
                     )
 
                     // spacer
@@ -1337,7 +1427,7 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
         
                     })))
 
-                    ).title(year.to_string()).max_width(23)
+                    ).title(year.to_string()).max_width(27)
                 )
             )
             .child(
