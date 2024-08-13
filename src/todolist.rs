@@ -1,3 +1,5 @@
+/// Contains all of the helpers and struct definition of the todo list popup
+
 // STD Dependencies -----------------------------------------------------------
 use std::collections::HashMap;
 
@@ -14,9 +16,9 @@ use cursive::theme::*;
 use cursive::views::*;
 use cursive::views::NamedView;
 use cursive::event::{Callback, Event, EventResult, MouseButton, MouseEvent};
+use cursive::event::Key;
 
 // Debug dependencies ---------------------------------------------------------
-
 use log::info;
 
 // Internal dependencies ------------------------------------------------------
@@ -214,6 +216,23 @@ impl View for TodoList {
                     }
                     self.focused = None;
                 }
+            }
+            // exit todo list on popup as well
+            Event::Key(Key::Enter) => {
+
+                return EventResult::Consumed(Some(Callback::from_fn(move |s| {
+
+                    s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
+
+                        let mut_storage_ref = view.storage.lock().unwrap();
+                        save_data(&mut_storage_ref.events);
+            
+                    });
+        
+                    s.pop_layer();
+
+                })))
+
             }
             _ => (),
         }

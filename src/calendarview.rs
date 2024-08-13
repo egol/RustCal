@@ -1,3 +1,5 @@
+/// Contains all of the logic necessary to draw the main calendar window with days
+
 // STD Dependencies -----------------------------------------------------------
 use std::cmp;
 use std::collections::HashMap;
