@@ -1,3 +1,6 @@
+use chrono::prelude::*;
+
+
 /// Enumeration of all months in a year.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Month {
@@ -103,5 +106,74 @@ impl<'a> Into<i32> for Month {
             Month::November => 10,
             Month::December => 11,
         }
+    }
+}
+
+pub fn month_to_string(num : i32) -> String{
+    match num{
+        1 => String::from("January"),
+        2 => String::from("February"),
+        3 => String::from("March"),
+        4 => String::from("April"),
+        5 => String::from("May"),
+        6 => String::from("June"),
+        7 => String::from("July"),
+        8 => String::from("August"),    
+        9 => String::from("September"),
+        10 => String::from("October"),
+        11 => String::from("November"),
+        12 => String::from("December"),
+        _ => String::from("Invalid Month"),
+    }
+}
+
+/// Outputs a custom date fromat given a DateTime
+/// 8/9/2024 becomes: Friday, 9th
+pub fn format_task_date(date: DateTime<Local>) -> String {
+    // Get the weekday and day of the month
+    let weekday = match date.weekday() {
+        Weekday::Mon => "Monday",
+        Weekday::Tue => "Tuesday",
+        Weekday::Wed => "Wednesday",
+        Weekday::Thu => "Thursday",
+        Weekday::Fri => "Friday",
+        Weekday::Sat => "Saturday",
+        Weekday::Sun => "Sunday",
+    };
+    
+    let day_of_month = date.day();
+
+    // Convert the day of the month to a string with a suffix (e.g., "13th")
+    let day_suffix = match day_of_month {
+        1 | 21 | 31 => "st",
+        2 | 22 => "nd",
+        3 | 23 => "rd",
+        _ => "th",
+    };
+
+    // Format the date as "Friday, 13th"
+    format!(
+        "{}, {}{}",
+        weekday,
+        day_of_month,
+        day_suffix
+    )
+}
+
+pub fn abbr_month_to_string(num : i32) -> String{
+    match num{
+        1 => String::from("Jan"),
+        2 => String::from("Feb"),
+        3 => String::from("Mar"),
+        4 => String::from("Apr"),
+        5 => String::from("May"),
+        6 => String::from("Jun"),
+        7 => String::from("Jul"),
+        8 => String::from("Aug"),    
+        9 => String::from("Sep"),
+        10 => String::from("Oct"),
+        11 => String::from("Nov"),
+        12 => String::from("Dec"),
+        _ => String::from("Invalid Month"),
     }
 }
