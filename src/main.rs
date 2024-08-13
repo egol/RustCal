@@ -23,7 +23,7 @@ use chrono::{prelude::*, Duration};
 use chrono::{Datelike, Weekday};
 // use cursive::backends::crossterm::crossterm::event;
 use cursive::traits::*;
-use cursive::utils::span::SpannedStr;
+// use cursive::utils::span::SpannedStr;
 use cursive::Cursive;
 use cursive::Vec2;
 #[macro_use] extern crate serde_derive;
@@ -368,8 +368,6 @@ where
 
         let first_week_day = month_start.weekday() as i32;
 
-        // let mut counter = 0;
-
         // Draw days
         let w_offset: i32 = 0;
         let d_shift = ((1 as i32 - w_offset) + 7) % 7;
@@ -442,22 +440,33 @@ where
                     past = false;
                 }
                 
-                let mut totals = vec![0,0,0];
+                let mut totals_incomplete = vec![0,0,0];
+                let mut totals_complete = vec![0,0,0];
 
-                // totals up the status numbers for the calendar display
+                // totals up uncompleted event status
                 for a in events.iter(){
-                    totals[a.status as usize] += 1;
+                    if !a.completed {
+                        totals_incomplete[a.status as usize] += 1;
+                    }
+                }
+                // totals up completed event status
+                for a in events.iter(){
+                    if a.completed {
+                        totals_complete[a.status as usize] += 1;
+                    }
                 }
 
-                self.draw_cell(printer, x as u8, y as u8, format!("{:>2}", day_number + 1), color, totals, past);
+                self.draw_cell(printer, x as u8, y as u8, format!("{:>2}", day_number + 1),
+                    color, totals_incomplete, totals_complete, past);
             }
         }
 
     }
 
-    fn draw_cell (&self, p: &Printer, offset_x : u8, offset_y : u8, day : String, color : ColorStyle, nums : Vec<i32>, past : bool) {
+    fn draw_cell (&self, p: &Printer, offset_x : u8, offset_y : u8, day : String, color : ColorStyle,
+        nums_incomplete: Vec<i32>, nums_complete: Vec<i32>, past : bool) {
         // sets the size of one calendar cell
-        let x_max : u8 = 10;
+        let x_max : u8 = 11;
         let y_max : u8 = 5;
 
         // prints one calendar square
@@ -501,43 +510,103 @@ where
                     });
                 }
 
-                //draw past event totals (greyed out)
-                else if x == 1 && !past{
-                    if x == 1 && y == 1 && nums[0] > 0{
-                        p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90)), |printer| {
-                            printer.print((x + offset_x, y + offset_y), &format!("{:>2}", nums[0]));
+                // draw current/future event totals
+                else if x == 1 && !past {
+
+                    let mut content: String = "".to_string();
+                    let mut color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90));
+
+                    if y == 1 && nums_incomplete[0] > 0 {
+                        content = format!("{:>2}", nums_incomplete[0]);
+                    }
+                    else if y == 2 && nums_incomplete[1] > 0 {
+                        color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90));
+                        content = format!("{:>2}", nums_incomplete[1]);
+                    }
+                    else if y == 3 && nums_incomplete[2] > 0 {
+                        color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90));
+                        content = format!("{:>2}", nums_incomplete[2]);
+                    }
+
+                    if y >= 1 && y <= 3 && content.len() > 0{
+                        p.with_color(color, |printer| {
+                            printer.print((x + offset_x, y + offset_y), &content);
                         });
                     }
-                    else if x == 1 && y == 2 && nums[1] > 0{
-                        p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90)), |printer| {
-                            printer.print((x + offset_x, y + offset_y), &format!("{:>2}", nums[1]));
-                        });
-                    }
-                    else if x == 1 && y == 3 && nums[2] > 0{
-                        p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90)), |printer| {
-                            printer.print((x + offset_x, y + offset_y), &format!("{:>2}", nums[2]));
-                        });
-                    }
+
                 }
-                //draw current/future event totals
-                else if x == 1 && past{
-                    if x == 1 && y == 1 && nums[0] > 0{
-                        p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(70, 70, 70)), |printer| {
-                            printer.print((x + offset_x, y + offset_y), &format!("{:>2}", nums[0]));
+                // draw completed current and future events
+                else if x == 3 && !past {
+
+                    let mut color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(140, 240, 140));
+                    let mut content: String = "".to_string();
+
+                    if y == 1 && nums_complete[0] > 0 {
+                        content = format!("{:>2}", nums_complete[0]);
+                    }
+                    else if y == 2 && nums_complete[1] > 0 {
+                        color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(240, 240, 140));
+                        content = format!("{:>2}", nums_complete[1]);
+                    }
+                    else if y == 3 && nums_complete[2] > 0 {
+                        color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(240, 140, 140));
+                        content = format!("{:>2}", nums_complete[2]);
+                    }
+
+                    if y >= 1 && y <= 3 && content.len() > 0 {
+                        p.with_color(color, |printer| {
+                            printer.print((x + offset_x, y + offset_y), &content);
                         });
                     }
-                    else if x == 1 && y == 2 && nums[1] > 0{
-                        p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(70, 70, 70)), |printer| {
-                            printer.print((x + offset_x, y + offset_y), &format!("{:>2}", nums[1]));
-                        });
-                    }
-                    else if x == 1 && y == 3 && nums[2] > 0{
-                        p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(70, 70, 70)), |printer| {
-                            printer.print((x + offset_x, y + offset_y), &format!("{:>2}", nums[2]));
-                        });
-                    }
+
                 }
-                else if x == 6 && y == 1{
+                // draw past event totals (greyed out)
+                else if x == 1 && past {
+
+                    let color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(70, 70, 70));
+                    let mut content: String = "".to_string();
+
+                    if y == 1 && nums_incomplete[0] > 0 {
+                        content = format!("{:>2}", nums_incomplete[0]);
+                    }
+                    else if y == 2 && nums_incomplete[1] > 0 {
+                        content = format!("{:>2}", nums_incomplete[1]);
+                    }
+                    else if y == 3 && nums_incomplete[2] > 0 {
+                        content = format!("{:>2}", nums_incomplete[2]);
+                    }
+
+                    if y >= 1 && y <= 3 && content.len() > 0 {
+                        p.with_color(color, |printer| {
+                            printer.print((x + offset_x, y + offset_y), &content);
+                        });
+                    }
+
+                }
+                // draw completed past events
+                else if x == 2 && past {
+
+                    let color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(110, 110, 110));
+                    let mut content: String = "".to_string();
+
+                    if y == 1 && nums_complete[0] > 0 {
+                        content = format!("{:>2}", nums_complete[0]);
+                    }
+                    else if y == 2 && nums_complete[1] > 0 {
+                        content = format!("{:>2}", nums_complete[1]);
+                    }
+                    else if y == 3 && nums_complete[2] > 0 {
+                        content = format!("{:>2}", nums_complete[2]);
+                    }
+
+                    if y >= 1 && y <= 3 && content.len() > 0 {
+                        p.with_color(color, |printer| {
+                            printer.print((x + offset_x, y + offset_y), &content);
+                        });
+                    }
+
+                }
+                else if x == 7 && y == 1 {
                     if color == ColorStyle::secondary() {
                         p.with_color(color, |printer| {
                             printer.print((x + offset_x, y + offset_y), &day);
@@ -847,9 +916,19 @@ where
         ))
         .title("Todo")
         
-        //TODO save content here
         .button("Ok", |s| {
+
+            // this writes the current content of the storage to the json save file
+            // saves on exiting the todo menu
+            s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
+
+                let mut_storage_ref = view.storage.lock().unwrap();
+                write(&mut_storage_ref.events);
+    
+            });
+
             s.pop_layer();
+
         }));
 
 }
@@ -884,16 +963,25 @@ impl TaskList {
         if self.text_event.content.len() > 0{
             for x in 0..self.size.x {
 
-                let background_color;
+                let mut background_color;
 
                 if self.text_event.status == 1{
                     background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90));
+                    if self.text_event.completed {
+                        background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(240, 240, 140));
+                    }
                 }
                 else if self.text_event.status == 2{
                     background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90));
+                    if self.text_event.completed {
+                        background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(240, 140, 140));
+                    }
                 }
                 else{
                     background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90));
+                    if self.text_event.completed {
+                        background_color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(140, 240, 140));
+                    }
                 }
 
                 if x == 1 {
@@ -1214,7 +1302,7 @@ fn create_task_list(mut events: HashMap<NaiveDate, Vec<TextEvent>>) -> Vec<Vec<T
     let utc: DateTime<Local> = Local::now();
 
     // need to go through the next 7 days where the first day is the present
-    for i in 0..7 {
+    for i in 0..8 {
         week_events.push(events.entry(
             NaiveDate::from_ymd_opt(utc.year(), utc.month(), utc.day() + i).unwrap()).or_default().clone());
     }
@@ -1421,6 +1509,7 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
                     // spacer
                     // .child(Layer::new(TextView::new(" ")))
 
+                    // TODO: Create Pomodoro timer
                     .child(Panel::new(Button::new("Pomodoro Timer", move|s| {
                         
                         
@@ -1653,7 +1742,6 @@ fn main() {
         s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
 
             let mut_storage_ref = view.storage.lock().unwrap();
-
             write(&mut_storage_ref.events);
 
         });
