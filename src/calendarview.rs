@@ -37,7 +37,6 @@ pub struct CalendarView<T: TimeZone> {
     latest_date: Option<DateTime<T>>,
     date: DateTime<chrono::Local>,
     focused: Option<Vec2>,
-    /// todays date
     current_date: cursive::XY<i32>,
     pub storage: Arc<Mutex<Storage>>,
 }
@@ -119,6 +118,8 @@ where
         true
     }
 
+    // Todo: some weird stuff going on in this function
+    // look at its logic
     fn draw_days(&self, printer: &Printer) {
         let year = self.view_date.year();
         let month: util::month::Month = self.view_date.month0().into();
@@ -201,11 +202,7 @@ where
                                 .get(&NaiveDate::from_ymd_opt(exact_date.year(), exact_date.month(), exact_date.day()).unwrap())
                                 .unwrap_or(&Vec::new()).clone();
                     
-                let mut past = true;
-
-                if (exact_date.day0() >= active_day as u32 && d_month == 0 && d_year == 0) || d_year < 0 || (d_month < 0 && d_year <= 0){
-                    past = false;
-                }
+                let past = exact_date.date_naive() < self.date.date_naive();
                 
                 let mut totals_incomplete = vec![0,0,0];
                 let mut totals_complete = vec![0,0,0];

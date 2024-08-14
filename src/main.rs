@@ -12,7 +12,7 @@
 
 // STD Dependencies -----------------------------------------------------------
 use std::collections::HashMap;
-use std::fs::File;
+// use std::fs::File;
 use std::sync::{Arc, Mutex};
 
 // External Dependencies ------------------------------------------------------
@@ -30,8 +30,8 @@ use cursive::views::LayerPosition;
 
 // Debug dependencies ---------------------------------------------------------
 
-use log::{info, LevelFilter};
-use simplelog::{Config, WriteLogger};
+// use log::{info, LevelFilter};
+// use simplelog::{Config, WriteLogger};
 
 // Internal Dependencies ------------------------------------------------------
 mod util;
@@ -251,10 +251,10 @@ fn main() {
     let month = utc.month();
 
     // Create a log file
-    let log_file = File::create("app.log").unwrap();
+    // let log_file = File::create("app.log").unwrap();
 
     // Initialize the logger to write to the file
-    WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
+    // WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
 
     // storage that contains all user created data
     let data = Arc::new(Mutex::new(Storage::new(read())));
