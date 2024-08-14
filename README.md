@@ -2,25 +2,28 @@
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE) [![GitHub release](https://img.shields.io/github/release/egol/RustCal?include_prereleases=&sort=semver&color=orange)](https://github.com/egol/RustCal/releases/)
 
 
-Terminal based calendar app written in rust
+Terminal based calendar/agenda app written in rust
 #### Built with [Cursive](https://github.com/gyscos/cursive)
  
 <p align="center">
-  <img height=300 src="./images/3.PNG">
-  <img height=300 src="./images/4.PNG">
+  <img height=500 src="./images/2.PNG">
+  <img height=500 src="./images/5.png">
 </p>
-pictured above: version 0.1
+pictured above: version 0.2 (right image pictures app running in the vscode terminal)
 
 ## Features
- * Month by Month displaying
+ * Month overview
  * Basic Todo List functionality
- * Terminal based UI
+ * Completly terminal based UI
  * Flexible cross-platform TUI library that supports Linux, Windows and Mac
- * Basic saving functionality through a single json file (press 'k' to save)
+ * Simple saving functionality through a single json file (press 'k' to save)
  * A realtime clock
-## Goals
- - Todo-list time based granularity + striking off completed tasks
+ * Pomodoro Timer
+ * completely offline
+## Future Goals
  - Custom UI theme (dark mode)
+ - Settings menu
+ - Better todo editing
 
 ## Building the project
 
@@ -49,3 +52,11 @@ pictured above: version 0.1
 * `Enter` opens todo list at selected day
 * `K` saves the state to a json file
 * Date in the top left corner navigates to current day in calendar when clicked
+* `wasd` can be used to move around the current focused window
+
+
+
+<p align="center">
+  <img height=500 src="./images/3.PNG">
+  <img height=500 src="./images/4.PNG">
+</p>
