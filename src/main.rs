@@ -16,8 +16,6 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration as stDuration;
 
 // External Dependencies ------------------------------------------------------
 use chrono::prelude::*;
@@ -51,7 +49,6 @@ use tasklist::*;
 use calendarview::*;
 use util::month::*;
 use util::file::*;
-use pomodoro::*;
 use util::timer::*;
 
 // creates the main panel which includes the entire calendar, clock and other components

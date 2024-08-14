@@ -6,7 +6,8 @@
 use std::sync::{Arc, Mutex};
 
 // External Dependencies ------------------------------------------------------
-use chrono::{Local, DateTime, Duration};
+use chrono::Duration;
+use cursive::theme::ColorStyle;
 use cursive::traits::*;
 use cursive::Cursive;
 use cursive::Vec2;
@@ -14,13 +15,12 @@ use cursive::Printer;
 use cursive::direction::Direction;
 use cursive::view::CannotFocus;
 use cursive::views::*;
-use cursive::event::{Callback, Event, EventResult, Key, MouseButton, MouseEvent};
-use log::info;
+use cursive::event::EventResult;
 
 // Internal
 use crate::util::timer::*;
 
-const ASCII_NUMBERS: [&[&str]; 10] = [
+const ASCII_NUMBERS: [&[&str]; 11] = [
     &[
         "  _   ",
         " / \\  ",
@@ -71,6 +71,11 @@ const ASCII_NUMBERS: [&[&str]; 10] = [
         " (__\\ ",
         "  __/ "
     ], // 9
+    &[
+        "   ",
+        " ° ",
+        " ° "
+    ], // seperator
 ];
 
 // Mini
@@ -96,11 +101,17 @@ fn format_time_to_ascii(hours: i64, minutes: i64, seconds: i64) -> Vec<String> {
             .map(|d| d.to_digit(10).unwrap() as usize)
             .collect();
 
-        info!("{:?}", digits);
-
         for &digit in &digits {
             let ascii_digit = draw_ascii_number(digit);
             for (j, line) in ascii_digit.iter().enumerate() {
+                ascii_representation[j].push_str(line);
+            }
+        }
+
+        // Add colon separator after hours and minutes (except after the last component)
+        if i < time_components.len() - 1 {
+            let colon_digit = draw_ascii_number(10);
+            for (j, line) in colon_digit.iter().enumerate() {
                 ascii_representation[j].push_str(line);
             }
         }
@@ -146,19 +157,11 @@ impl Pomodoro {
     }
 
     pub fn unpause(&mut self) {
-
         self.timer.lock().unwrap().start();
-        // self.timer.start();
     }
 
     pub fn pause(&mut self) {
-
-        let mut timer_mut = self.timer.lock().unwrap();
-
-        timer_mut.pause();
-        if !self.on_break {
-            self.total_work_time += self.work_duration - timer_mut.time_remaining();
-        }
+        self.timer.lock().unwrap().pause();
     }
 
     pub fn reset(&mut self) {
@@ -171,6 +174,9 @@ impl Pomodoro {
     }
 
     pub fn skip(&mut self) {
+
+        self.total_work_time += self.timer.lock().unwrap().time_elapsed();
+
         if self.on_break {
             // Moving from break back to work
             self.on_break = false;
@@ -198,16 +204,7 @@ impl Pomodoro {
         self.timer.lock().unwrap().start();
     }
 
-    pub fn handle_timer_event(&mut self) -> bool {
-        if self.timer.lock().unwrap().is_time_up() {
-            self.skip();
-            true
-        } else {
-            false
-        }
-    }
-
-    fn draw_list(&self, p: &Printer) {
+    fn draw_timer(&self, p: &Printer) {
         let remaining = self.timer.lock().unwrap().time_remaining();
         let hours = remaining.num_hours();
         let minutes = remaining.num_minutes() % 60;
@@ -228,27 +225,23 @@ impl Pomodoro {
             self.total_work_time.num_seconds() % 60
         )
     }
-
-    fn tally_str(&self) -> String {
-        format!(
-            "Work Sessions: {}\nShort Breaks: {}\nLong Breaks: {}",
-            self.work_sessions_completed,
-            self.short_breaks_completed,
-            self.long_breaks_completed
-        )
-    }
 }
 
 impl View for Pomodoro {
 
     fn draw(&self, printer: &Printer) {
-        self.draw_list(printer);
-        printer.print((0, 7), &self.total_work_time_str());
-        printer.print((0, 9), &self.tally_str());
+        printer.with_color(ColorStyle::primary(), |printer| {
+            self.draw_timer(printer);
+        });
+        printer.print((0, 4), &self.total_work_time_str());
+        printer.print((0, 5), &format!("Work Sessions: {}", self.work_sessions_completed));
+        printer.print((0, 6), &format!("Breaks: {}", self.short_breaks_completed + self.long_breaks_completed));
+        // printer.print((0, 6), &format!("Short Breaks: {}", self.short_breaks_completed));
+        // printer.print((0, 7), &format!("Long Breaks: {}", self.long_breaks_completed));
     }
 
     fn required_size(&mut self, _: Vec2) -> Vec2 {
-        self.size = (40, 12).into();
+        self.size = (42, 8).into();
         self.size
     }
 
@@ -264,28 +257,35 @@ pub fn create_pomodoro_timer(s: &mut Cursive, pomodoro: Pomodoro) {
         Dialog::around(
             LinearLayout::vertical()
                 .child(NamedView::new("pomodoro", pomodoro))
-                .child(Button::new("Start", |s| {
-                    s.call_on_name("pomodoro", |view: &mut Pomodoro| {
-                        view.unpause();
-                    });
-                }))
-                .child(Button::new("Pause", |s| {
-                    s.call_on_name("pomodoro", |view: &mut Pomodoro| {
-                        view.pause();
-                    });
-                }))
-                .child(Button::new("Skip", |s| {
-                    s.call_on_name("pomodoro", |view: &mut Pomodoro| {
-                        view.skip();
-                    });
-                }))
-                .child(Button::new("Reset", |s| {
-                    s.call_on_name("pomodoro", |view: &mut Pomodoro| {
-                        view.reset();
-                    });
-                })),
+                
+                .child(LinearLayout::horizontal()
+                    .child(Button::new("Start", |s| {
+                        s.call_on_name("pomodoro", |view: &mut Pomodoro| {
+                            view.unpause();
+                        });
+                    }))
+                    .child(TextView::new("   "))
+                    .child(Button::new("Pause", |s| {
+                        s.call_on_name("pomodoro", |view: &mut Pomodoro| {
+                            view.pause();
+                        });
+                    }))
+                    .child(TextView::new("   "))
+                    .child(Button::new("Skip", |s| {
+                        s.call_on_name("pomodoro", |view: &mut Pomodoro| {
+                            view.skip();
+                        });
+                    }))
+                    .child(TextView::new("   "))
+                    .child(Button::new("Reset", |s| {
+                        s.call_on_name("pomodoro", |view: &mut Pomodoro| {
+                            view.reset();
+                        });
+                    }))
+                )
+
         )
-        .title("Timer")
+        .title("Pomodoro Timer")
         .button("Ok", |s| {
             s.pop_layer();
         }),

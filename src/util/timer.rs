@@ -2,6 +2,7 @@
 
 // External Dependencies ------------------------------------------------------
 use chrono::{Local, DateTime, Duration};
+// use cursive::reexports::time::Duration;
 
 pub struct CountdownTimer {
     duration: Duration,
@@ -44,9 +45,13 @@ impl CountdownTimer {
         if self.paused {
             self.duration
         } else {
-            let elapsed = Local::now() - self.start;
-            self.duration - elapsed
+            self.duration - self.time_elapsed()
         }
+    }
+
+    pub fn time_elapsed(&self) -> Duration {
+        let elapsed = Local::now() - self.start;
+        elapsed
     }
 
     pub fn is_time_up(&self) -> bool {
