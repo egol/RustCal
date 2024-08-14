@@ -171,6 +171,7 @@ impl Pomodoro {
         self.work_sessions_completed = 0;
         self.short_breaks_completed = 0;
         self.long_breaks_completed = 0;
+        self.total_work_time = Duration::zero();
     }
 
     pub fn skip(&mut self) {
@@ -219,11 +220,17 @@ impl Pomodoro {
 
     fn total_work_time_str(&self) -> String {
         format!(
-            "Total Work Time: {:02}:{:02}:{:02}",
+            "Total time worked: {:02}:{:02}:{:02}",
             self.total_work_time.num_hours(),
             self.total_work_time.num_minutes() % 60,
             self.total_work_time.num_seconds() % 60
         )
+    }
+
+    pub fn update_durations(&mut self, work: i64, short_break: i64, long_break: i64) {
+        self.work_duration = Duration::minutes(work);
+        self.short_break_duration = Duration::minutes(short_break);
+        self.long_break_duration = Duration::minutes(long_break);
     }
 }
 
@@ -233,9 +240,11 @@ impl View for Pomodoro {
         printer.with_color(ColorStyle::primary(), |printer| {
             self.draw_timer(printer);
         });
-        printer.print((0, 4), &self.total_work_time_str());
-        printer.print((0, 5), &format!("Work Sessions: {}", self.work_sessions_completed));
-        printer.print((0, 6), &format!("Breaks: {}", self.short_breaks_completed + self.long_breaks_completed));
+        printer.with_color(ColorStyle::secondary(), |printer| {
+            printer.print((0, 4), &self.total_work_time_str());
+            printer.print((0, 5), &format!("Work Sessions: {}", self.work_sessions_completed));
+            printer.print((0, 6), &format!("Breaks: {}", self.short_breaks_completed + self.long_breaks_completed));
+        });
         // printer.print((0, 6), &format!("Short Breaks: {}", self.short_breaks_completed));
         // printer.print((0, 7), &format!("Long Breaks: {}", self.long_breaks_completed));
     }
@@ -264,29 +273,84 @@ pub fn create_pomodoro_timer(s: &mut Cursive, pomodoro: Pomodoro) {
                             view.unpause();
                         });
                     }))
-                    .child(TextView::new("   "))
+                    .child(TextView::new("  "))
                     .child(Button::new("Pause", |s| {
                         s.call_on_name("pomodoro", |view: &mut Pomodoro| {
                             view.pause();
                         });
                     }))
-                    .child(TextView::new("   "))
+                    .child(TextView::new("  "))
                     .child(Button::new("Skip", |s| {
                         s.call_on_name("pomodoro", |view: &mut Pomodoro| {
                             view.skip();
                         });
                     }))
-                    .child(TextView::new("   "))
+                    .child(TextView::new("  "))
                     .child(Button::new("Reset", |s| {
                         s.call_on_name("pomodoro", |view: &mut Pomodoro| {
                             view.reset();
                         });
+                    }))
+                    .child(TextView::new("  "))
+                    .child(Button::new("Edit", |s| {
+                        // Open the Edit Dialog
+                        s.add_layer(
+                            Dialog::new()
+                                .title("Edit Durations")
+                                .content(
+                                    LinearLayout::vertical()
+                                        .child(TextView::new("Work Duration (minutes):"))
+                                        .child(EditView::new().with_name("work_duration").fixed_width(10))
+                                        .child(TextView::new("Short Break Duration (minutes):"))
+                                        .child(EditView::new().with_name("short_break_duration").fixed_width(10))
+                                        .child(TextView::new("Long Break Duration (minutes):"))
+                                        .child(EditView::new().with_name("long_break_duration").fixed_width(10))
+                                )
+                                .button("OK", |s| {
+                                    let work = s
+                                        .call_on_name("work_duration", |view: &mut EditView| {
+                                            view.get_content()
+                                        })
+                                        .unwrap()
+                                        .parse::<i64>()
+                                        .unwrap_or(25);
+
+                                    let short_break = s
+                                        .call_on_name("short_break_duration", |view: &mut EditView| {
+                                            view.get_content()
+                                        })
+                                        .unwrap()
+                                        .parse::<i64>()
+                                        .unwrap_or(5);
+
+                                    let long_break = s
+                                        .call_on_name("long_break_duration", |view: &mut EditView| {
+                                            view.get_content()
+                                        })
+                                        .unwrap()
+                                        .parse::<i64>()
+                                        .unwrap_or(15);
+
+                                    s.call_on_name("pomodoro", |view: &mut Pomodoro| {
+                                        view.update_durations(work, short_break, long_break);
+                                        view.reset();
+                                    });
+
+                                    s.pop_layer(); // Close the edit dialog
+                                })
+                                .button("Cancel", |s| {
+                                    s.pop_layer(); // Close the edit dialog without saving
+                                })
+                        );
                     }))
                 )
 
         )
         .title("Pomodoro Timer")
         .button("Ok", |s| {
+            s.call_on_name("pomodoro", |view: &mut Pomodoro| {
+                view.pause();
+            });
             s.pop_layer();
         }),
     );

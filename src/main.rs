@@ -3,10 +3,8 @@
 // implement the needs re-layout function to improve performance?
 
 // TODO:
-// 3. Add more priorities?
 // 4. Rework Readme for release
 // 5. Add todo list functionality?
-// 6. Add in pomodoro timer button
 // 7. at 12:37am time shows as 00:37
 // 8. Allow shifting of the task list time frame via drop down menu
 //    Look at previous 7 days or two weeks from now ect.
