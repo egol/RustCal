@@ -351,7 +351,7 @@ where
 
                 }
                 // draw completed past events
-                else if x == 2 && past {
+                else if x == 3 && past {
 
                     let color = ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(110, 110, 110));
                     let mut content: String = "".to_string();

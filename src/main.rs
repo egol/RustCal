@@ -16,10 +16,13 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration as stDuration;
 
 // External Dependencies ------------------------------------------------------
 use chrono::prelude::*;
 use chrono::Datelike;
+use chrono::{DateTime, Duration, Local};
 use cursive::traits::*;
 use cursive::Cursive;
 #[macro_use] extern crate serde_derive;
@@ -40,6 +43,7 @@ mod tasklist;
 mod calendarview;
 mod todolist;
 mod clock;
+mod pomodoro;
 
 use util::textevent::*;
 use util::storage::*;
@@ -47,11 +51,14 @@ use tasklist::*;
 use calendarview::*;
 use util::month::*;
 use util::file::*;
+use pomodoro::*;
+use util::timer::*;
 
 // creates the main panel which includes the entire calendar, clock and other components
-fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<LinearLayout>{
+fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<Mutex<CountdownTimer>>) -> Panel<LinearLayout>{
 
-    //TODO MOVE OUT OF FUNCTION
+    // TODO MOVE OUT OF FUNCTION
+    // Use calendar generic in the future
     let utc: DateTime<Local> = Local::now();
     let c_year = utc.year();
     let c_month = utc.month();
@@ -69,6 +76,11 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
         events_clone = st_clone_panel5.lock().unwrap().events.clone();
     }
 
+    let tm_clone = Arc::clone(&timer);
+    let tm_clone2 = Arc::clone(&timer);
+    let tm_clone3 = Arc::clone(&timer);
+    let tm_clone4 = Arc::clone(&timer);
+
     // create the entire calendar display
     Panel::new(
         LinearLayout::vertical()
@@ -83,15 +95,16 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
                     s.pop_layer();
     
                     let st_clone = Arc::clone(&st_clone_panel4);
+                    let tm_clone = Arc::clone(&tm_clone);
     
-                    s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone)));
+                    s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone), tm_clone));
     
                 }))
                 )
             )).min_width(27))
 
             .child(NamedView::new("clock", 
-            Panel::new(PaddedView::lrtb(3, 0, 0, 0, clock::Clock::new())).max_width(80)
+            Panel::new(PaddedView::lrtb(2, 0, 0, 0, clock::Clock::new())).max_width(80)
             ))
         )
         .child(
@@ -118,10 +131,11 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
                                     for _columns in 0..num_rows {
 
                                         let st_clone = Arc::clone(&st);
+                                        let tm_clone = Arc::clone(&tm_clone2);
                                         
                                         row.add_child(Panel::new(Button::new(abbr_month_to_string(month), move |s| {
                                             s.pop_layer();
-                                            s.add_layer(create_panel(year, month as u32, Arc::clone(&st_clone)));
+                                            s.add_layer(create_panel(year, month as u32, Arc::clone(&st_clone), Arc::clone(&tm_clone)));
                                         })));
 
                                         month += 1;
@@ -149,10 +163,13 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
                     // spacer
                     // .child(Layer::new(TextView::new(" ")))
 
-                    // TODO: Create Pomodoro timer
                     .child(Panel::new(Button::new("Pomodoro Timer", move|s| {
                         
-                        
+                        let tm_clone = Arc::clone(&timer);
+
+                        let pm = pomodoro::Pomodoro::new(Duration::minutes(25), Duration::minutes(5), Duration::minutes(15), tm_clone);
+
+                        pomodoro::create_pomodoro_timer(s, pm);
         
                     })))
 
@@ -173,10 +190,12 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                                             let st_clone = Arc::clone(&st_clone_panel2);
 
+                                            let tm_clone = Arc::clone(&tm_clone3);
+
                                             if month-1 == 0{
-                                                s.add_layer(create_panel(year-1, 12, Arc::clone(&st_clone)));
+                                                s.add_layer(create_panel(year-1, 12, Arc::clone(&st_clone), tm_clone));
                                             } else {
-                                                s.add_layer(create_panel(year, month-1, Arc::clone(&st_clone)));
+                                                s.add_layer(create_panel(year, month-1, Arc::clone(&st_clone), tm_clone));
                                             }
                                         })
                                     )
@@ -187,10 +206,12 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>) -> Panel<Line
 
                                             let st_clone = Arc::clone(&st_clone_panel3);
 
+                                            let tm_clone = Arc::clone(&tm_clone4);
+
                                             if month+1 == 13{
-                                                s.add_layer(create_panel(year+1, 1, Arc::clone(&st_clone)));
+                                                s.add_layer(create_panel(year+1, 1, Arc::clone(&st_clone), tm_clone));
                                             } else {
-                                                s.add_layer(create_panel(year, month+1, Arc::clone(&st_clone)));
+                                                s.add_layer(create_panel(year, month+1, Arc::clone(&st_clone), tm_clone));
                                             }
                                         })
                                     )
@@ -240,7 +261,13 @@ fn main() {
     // Initialize the logger to write to the file
     WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
 
+    // storage that contains all user created data
     let data = Arc::new(Mutex::new(Storage::new(read())));
+
+    // countdown timer used by pomodoro timer
+    let timer = Arc::new(Mutex::new(CountdownTimer::new(Duration::minutes(25))));
+
+    let tm = Arc::clone(&timer);
 
     let mut siv = cursive::default();
 
@@ -263,9 +290,25 @@ fn main() {
     let theme = custom_theme_from_cursive(&siv);
     siv.set_theme(theme);
 
-    siv.add_layer(create_panel(year, month, data));
+    siv.add_layer(create_panel(year, month, data, timer));
 
-    siv.set_autorefresh(true);
+    // siv.set_autorefresh(true);
 
-    siv.run();
+    let mut runner = siv.runner();
+
+    while runner.is_running() {
+
+        {
+            let mut timer = tm.lock().unwrap();
+            // Handle timer event if time is up
+            timer.update_finished_status();
+        }
+
+        runner.refresh();
+        runner.step();
+
+        // thread::sleep(stDuration::from_secs_f32(0.1));
+    }
+
+    // siv.run();
 }

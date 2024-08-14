@@ -22,16 +22,17 @@ pub struct Clock{
 impl Clock {
     pub fn new() -> Self {
         Self {
-            time: get_ascii_time(),
+            time: get_ascii_time(Local::now()),
         }
     }
 
     pub fn update_time(&mut self){
-        self.time = get_ascii_time();
+        self.time = get_ascii_time(Local::now());
     }
 }
 
-fn get_ascii_time() -> String{
+/// takes a local date time and converts it to a ascii character representation
+pub fn get_ascii_time(local: DateTime<Local>) -> String{
     let top: Vec<&str> = TOP.split('#').collect();
 
     let m1: Vec<&str> = M1.split('#').collect();
@@ -43,7 +44,7 @@ fn get_ascii_time() -> String{
     let bot: Vec<&str> = BOT.split('#').collect();
 
     // Get the current local time
-    let local: DateTime<Local> = Local::now();
+    // let local: DateTime<Local> = Local::now();
 
     // Extract hour, minute, and second components
     let mut hour = local.hour();
@@ -78,7 +79,7 @@ impl View for Clock {
         let mut temp = 0;
         let mut len = 100;
 
-        let time = get_ascii_time();
+        let time = get_ascii_time(Local::now());
 
         for (x, c) in time.chars().enumerate() {
             temp += 1;
