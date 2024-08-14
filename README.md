@@ -6,10 +6,9 @@ Terminal based calendar/agenda app written in rust
 #### Built with [Cursive](https://github.com/gyscos/cursive)
  
 <p align="center">
-  <img height=500 src="./images/2.PNG">
-  <img height=500 src="./images/5.png">
+  <img height=750 src="./images/2.PNG">
 </p>
-pictured above: version 0.2 (right image pictures app running in the vscode terminal)
+pictured above: version 0.2
 
 ## Features
  * Month overview
@@ -53,10 +52,10 @@ pictured above: version 0.2 (right image pictures app running in the vscode term
 * `K` saves the state to a json file
 * Date in the top left corner navigates to current day in calendar when clicked
 * `wasd` can be used to move around the current focused window
-
-
-
+<br>
+app running in vs code terminal:
+<br>
+<br>
 <p align="center">
-  <img height=500 src="./images/3.PNG">
-  <img height=500 src="./images/4.PNG">
+  <img height=750 src="./images/5.png">
 </p>
