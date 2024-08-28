@@ -6,7 +6,7 @@ Terminal based calendar/agenda app written in rust
 #### Built with [Cursive](https://github.com/gyscos/cursive)
  
 <p align="center">
-  <img height=750 src="./images/2.PNG">
+  <img width="75%" height="75%" src="./images/2.PNG">
 </p>
 pictured above: version 0.2
 
@@ -57,5 +57,5 @@ app running in vs code terminal:
 <br>
 <br>
 <p align="center">
-  <img height=750 src="./images/5.png">
+  <img width="75%" height="75%" src="./images/5.png">
 </p>
