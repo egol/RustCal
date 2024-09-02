@@ -12,7 +12,6 @@
 
 // STD Dependencies -----------------------------------------------------------
 use std::collections::HashMap;
-// use std::fs::File;
 use std::sync::{Arc, Mutex};
 
 // External Dependencies ------------------------------------------------------
@@ -30,6 +29,7 @@ use cursive::views::LayerPosition;
 
 // Debug dependencies ---------------------------------------------------------
 
+// use std::fs::File;
 // use log::{info, LevelFilter};
 // use simplelog::{Config, WriteLogger};
 
@@ -50,7 +50,7 @@ use util::file::*;
 use util::timer::*;
 
 // creates the main panel which includes the entire calendar, clock and other components
-fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<Mutex<CountdownTimer>>) -> Panel<LinearLayout>{
+fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<Mutex<PomodoroTimer>>) -> Panel<LinearLayout>{
 
     // TODO MOVE OUT OF FUNCTION
     // Use calendar generic in the future
@@ -161,8 +161,9 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<M
                     .child(Panel::new(Button::new("Pomodoro Timer", move|s| {
                         
                         let tm_clone = Arc::clone(&timer);
+                        // let pomodoro_instance = pm_clone.lock().unwrap();
 
-                        let pm = pomodoro::Pomodoro::new(Duration::minutes(25), Duration::minutes(5), Duration::minutes(15), tm_clone);
+                        let pm = pomodoro::Pomodoro::new(tm_clone);
 
                         pomodoro::create_pomodoro_timer(s, pm);
         
@@ -250,17 +251,19 @@ fn main() {
     let year = utc.year();
     let month = utc.month();
 
-    // Create a log file
+    // // Create a log file
     // let log_file = File::create("app.log").unwrap();
 
-    // Initialize the logger to write to the file
+    // // Initialize the logger to write to the file
     // WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
 
     // storage that contains all user created data
     let data = Arc::new(Mutex::new(Storage::new(read())));
 
     // countdown timer used by pomodoro timer
-    let timer = Arc::new(Mutex::new(CountdownTimer::new(Duration::minutes(25))));
+    let timer = Arc::new(Mutex::new(
+        PomodoroTimer::new(Duration::minutes(25), Duration::minutes(5), Duration::minutes(15))
+    ));
 
     let tm = Arc::clone(&timer);
 

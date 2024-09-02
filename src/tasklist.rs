@@ -27,24 +27,6 @@ use crate::util::textevent::*;
 use crate::calendarview::*;
 use crate::util::month::*;
 
-// #[derive(Clone, Serialize, Deserialize, Debug)]
-// pub struct TextEvent{
-//     content: String,
-//     status: i8,
-//     completed: bool,
-// }
-
-// impl TextEvent {
-//     pub fn new(s: String) -> Self {
-//         Self {
-//             content: s,
-//             status: 0,
-//             completed: false,
-//         }
-//     }
-
-// }
-
 pub struct TaskList {
     enabled: bool,
     size: Vec2,

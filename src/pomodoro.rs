@@ -6,7 +6,6 @@
 use std::sync::{Arc, Mutex};
 
 // External Dependencies ------------------------------------------------------
-use chrono::Duration;
 use cursive::theme::ColorStyle;
 use cursive::traits::*;
 use cursive::Cursive;
@@ -121,90 +120,55 @@ fn format_time_to_ascii(hours: i64, minutes: i64, seconds: i64) -> Vec<String> {
 }
 
 pub struct Pomodoro {
+    timer: Arc<Mutex<PomodoroTimer>>,
     enabled: bool,
     size: Vec2,
-    focused: Option<Vec2>,
-    timer: Arc<Mutex<CountdownTimer>>,
-    work_duration: Duration,
-    short_break_duration: Duration,
-    long_break_duration: Duration,
-    on_break: bool,
-    break_count: usize,
-    total_work_time: Duration,
-    work_sessions_completed: usize,
-    short_breaks_completed: usize,
-    long_breaks_completed: usize,
+    // focused: Option<Vec2>,
 }
 
 impl Pomodoro {
-    pub fn new(work_duration: Duration, short_break_duration: Duration, long_break_duration: Duration, timer: Arc<Mutex<CountdownTimer>> ) -> Self {
+    pub fn new(timer: Arc<Mutex<PomodoroTimer>> ) -> Self {
 
         Self {
             enabled: true,
             size: (0, 0).into(),
-            focused: None,
-            timer,
-            work_duration,
-            short_break_duration,
-            long_break_duration,
-            on_break: false,
-            break_count: 0,
-            total_work_time: Duration::zero(),
-            work_sessions_completed: 0,
-            short_breaks_completed: 0,
-            long_breaks_completed: 0,
+            // focused: None,
+            timer: timer,
         }
     }
 
     pub fn unpause(&mut self) {
-        self.timer.lock().unwrap().start();
+        self.timer.lock().unwrap().unpause();
     }
 
     pub fn pause(&mut self) {
         self.timer.lock().unwrap().pause();
     }
 
-    pub fn reset(&mut self) {
-        self.on_break = false;
-        self.break_count = 0;
-        self.timer.lock().unwrap().reset(self.work_duration);
-        self.work_sessions_completed = 0;
-        self.short_breaks_completed = 0;
-        self.long_breaks_completed = 0;
-        self.total_work_time = Duration::zero();
-    }
-
     pub fn skip(&mut self) {
-
-        self.total_work_time += self.timer.lock().unwrap().time_elapsed();
-
-        if self.on_break {
-            // Moving from break back to work
-            self.on_break = false;
-            self.timer.lock().unwrap().reset(self.work_duration);
-    
-            // Update tally for the break that was just completed
-            self.break_count += 1;
-            if self.break_count % 4 == 0 {
-                self.long_breaks_completed += 1;
-            } else {
-                self.short_breaks_completed += 1;
-            }
-        } else {
-            // Moving from work to break
-            self.on_break = true;
-            self.work_sessions_completed += 1;
-    
-            if self.break_count % 4 == 3 {
-                // Every fourth break is a long break (after 3 short breaks)
-                self.timer.lock().unwrap().reset(self.long_break_duration);
-            } else {
-                self.timer.lock().unwrap().reset(self.short_break_duration);
-            }
-        }
-        self.timer.lock().unwrap().start();
+        self.timer.lock().unwrap().skip();
     }
 
+    pub fn reset(&mut self) {
+        self.timer.lock().unwrap().reset();
+    }
+
+    pub fn work_sessions_completed(&self) -> usize{
+        self.timer.lock().unwrap().work_sessions_completed
+    }
+
+    pub fn short_breaks_completed(&self) -> usize {
+        self.timer.lock().unwrap().short_breaks_completed
+    }
+
+    pub fn long_breaks_completed(&self) -> usize {
+        self.timer.lock().unwrap().long_breaks_completed
+    }
+
+    pub fn total_work_time_str(&self) -> String{
+        self.timer.lock().unwrap().total_work_time_str()
+    }
+    
     fn draw_timer(&self, p: &Printer) {
         let remaining = self.timer.lock().unwrap().time_remaining();
         let hours = remaining.num_hours();
@@ -218,19 +182,8 @@ impl Pomodoro {
         }
     }
 
-    fn total_work_time_str(&self) -> String {
-        format!(
-            "Total time worked: {:02}:{:02}:{:02}",
-            self.total_work_time.num_hours(),
-            self.total_work_time.num_minutes() % 60,
-            self.total_work_time.num_seconds() % 60
-        )
-    }
-
     pub fn update_durations(&mut self, work: i64, short_break: i64, long_break: i64) {
-        self.work_duration = Duration::minutes(work);
-        self.short_break_duration = Duration::minutes(short_break);
-        self.long_break_duration = Duration::minutes(long_break);
+        self.timer.lock().unwrap().update_durations(work, short_break, long_break);
     }
 }
 
@@ -242,8 +195,8 @@ impl View for Pomodoro {
         });
         printer.with_color(ColorStyle::secondary(), |printer| {
             printer.print((0, 4), &self.total_work_time_str());
-            printer.print((0, 5), &format!("Work Sessions: {}", self.work_sessions_completed));
-            printer.print((0, 6), &format!("Breaks: {}", self.short_breaks_completed + self.long_breaks_completed));
+            printer.print((0, 5), &format!("Work Sessions: {}", self.work_sessions_completed()));
+            printer.print((0, 6), &format!("Breaks: {}", self.short_breaks_completed() + self.long_breaks_completed()));
         });
         // printer.print((0, 6), &format!("Short Breaks: {}", self.short_breaks_completed));
         // printer.print((0, 7), &format!("Long Breaks: {}", self.long_breaks_completed));
@@ -261,7 +214,7 @@ impl View for Pomodoro {
 }
 
 pub fn create_pomodoro_timer(s: &mut Cursive, pomodoro: Pomodoro) {
-
+    
     s.add_layer(
         Dialog::around(
             LinearLayout::vertical()
