@@ -110,8 +110,8 @@ impl PomodoroTimer {
 
     pub fn update_finished_status(&mut self) {
         if self.timer.is_time_up() {
-            self.pause();
             self.skip();
+            self.pause();
         }
     }
 
