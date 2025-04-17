@@ -290,9 +290,11 @@ fn main() {
 
     siv.add_layer(create_panel(year, month, data, timer));
 
-    // siv.set_autorefresh(true);
+    siv.set_autorefresh(true);
 
     let mut runner = siv.runner();
+
+    // runner.run();
 
     while runner.is_running() {
 
@@ -304,8 +306,7 @@ fn main() {
 
         runner.refresh();
         runner.step();
-
-        // thread::sleep(stDuration::from_secs_f32(0.1));
+        std::thread::sleep(std::time::Duration::from_secs_f32(0.1));
     }
 
     // siv.run();

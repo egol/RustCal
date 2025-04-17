@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use chrono::prelude::*;
 use chrono::Datelike;
 use cursive::traits::*;
+use cursive::utils::markup::{StyledStr, StyledString};
 use cursive::Cursive;
 use cursive::Vec2;
 use cursive::Printer;
@@ -194,7 +195,7 @@ where
                 let num = index as i32;
 
                 // Draw day number
-                let (x, y) = (num%7*11, num/7*6);
+                let (x, y) = (num%7*10, num/7*5);
                 
                 // Borrow the reference to storage using the async Arc and Mutex combination
                 let storage_ref = self.storage.lock().unwrap();
@@ -230,7 +231,7 @@ where
     fn draw_cell (&self, p: &Printer, offset_x : u8, offset_y : u8, day : String, color : ColorStyle,
         nums_incomplete: Vec<i32>, nums_complete: Vec<i32>, past : bool) {
         // sets the size of one calendar cell
-        let x_max : u8 = 11;
+        let x_max : u8 = 10;
         let y_max : u8 = 5;
 
         // prints one calendar square
@@ -597,30 +598,22 @@ pub fn create_calendar(year : i32, month : u32, s : Arc<Mutex<Storage>>) -> Line
 
     //TODO MOVE OUT OF FUNCTION
     let mut linear_layout = LinearLayout::vertical();
-
+    
     let mut h_l = LinearLayout::horizontal();
 
-    h_l.add_child(
-        Panel::new(ResizedView::with_fixed_size((9,1), TextView::new("Sunday")))
-    );
-    h_l.add_child(
-        Panel::new(ResizedView::with_fixed_size((9,1), TextView::new("Monday")))
-    );
-    h_l.add_child(
-        Panel::new(ResizedView::with_fixed_size((9,1), TextView::new("Tuesday")))
-    );
-    h_l.add_child(
-        Panel::new(ResizedView::with_fixed_size((9,1), TextView::new("Wednesday")))
-    );
-    h_l.add_child(
-        Panel::new(ResizedView::with_fixed_size((9,1), TextView::new("Thursday")))
-    );
-    h_l.add_child(
-        Panel::new(ResizedView::with_fixed_size((9,1), TextView::new("Friday")))
-    );
-    h_l.add_child(
-        Panel::new(ResizedView::with_fixed_size((9,1), TextView::new("Saturday")))
-    );
+    let days_of_week = vec![
+        "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
+    ];
+
+    for day in days_of_week.iter() {
+        h_l.add_child(
+            Panel::new(ResizedView::with_fixed_size((8,1), 
+            TextView::new(
+            StyledString::styled(*day, 
+                Style::from(Color::Dark(BaseColor::Black)).combine(Effect::Bold))
+                )))
+        );
+    }
 
     linear_layout.add_child(LinearLayout::vertical().child(h_l));
 
