@@ -29,9 +29,9 @@ use cursive::views::LayerPosition;
 
 // Debug dependencies ---------------------------------------------------------
 
-// use std::fs::File;
-// use log::{info, LevelFilter};
-// use simplelog::{Config, WriteLogger};
+use std::fs::File;
+use log::{info, LevelFilter};
+use simplelog::{Config, WriteLogger};
 
 // Internal Dependencies ------------------------------------------------------
 mod util;
@@ -82,25 +82,12 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<M
         .child(LinearLayout::horizontal()
             // .child(Panel::new(Layer::new(TextView::new(StyledString::styled(BADGE, Color::Dark(BaseColor::Blue))).center().fixed_width(21))
             // .child(Panel::new(Layer::new(TextView::new(" ").center().fixed_width(21))))
-            
-            .child(Panel::new(PaddedView::lrtb( 2, 2, 2, 2, LinearLayout::vertical()
-                .child(
-                Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
-                        
-                    s.pop_layer();
-    
-                    let st_clone = Arc::clone(&st_clone_panel4);
-                    let tm_clone = Arc::clone(&tm_clone);
-    
-                    s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone), tm_clone));
-    
-                }))
-                )
-            )).min_width(27))
-
+            .child(Panel::new(Layer::new(TextView::new(" ").center().fixed_width(4))))
             .child(NamedView::new("clock", 
             Panel::new(PaddedView::lrtb(2, 0, 0, 0, clock::Clock::new())).max_width(80)
             ))
+            // .child(Panel::new(Layer::new(TextView::new(StyledString::styled(BADGE, Color::Dark(BaseColor::Blue))).center().fixed_width(10))))
+            .child(Panel::new(Layer::new(TextView::new(" ").center().fixed_width(4))))
         )
         .child(
             LinearLayout::horizontal()
@@ -111,7 +98,6 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<M
 
                         // TODO move this outside as a global setting
                         let num_rows = 3;
-                        
                         let mut month = 1;
 
                         // generate each row 
@@ -142,6 +128,19 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<M
 
                         }
                     })
+
+                    // Current date
+                    .child( Panel::new(Button::new(format!("{}/{}/{}", c_month, c_day, c_year), move|s| {
+                        s.pop_layer();
+        
+                        let st_clone = Arc::clone(&st_clone_panel4);
+                        let tm_clone = Arc::clone(&tm_clone);
+        
+                        s.add_layer(create_panel(c_year, c_month, Arc::clone(&st_clone), tm_clone));
+        
+                        }))
+                    )
+
                     // spacer
                     .child(Layer::new(TextView::new(" ")))
 
@@ -152,7 +151,7 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<M
                             // DummyView
                             create_task_list_view(events_clone)
                             .scrollable()
-                        ).title("Next 7 Days").max_height(25)).with_name("tasklist")
+                        ).title("Next 7 Days").max_height(15)).with_name("tasklist")
                     )
 
                     // spacer
@@ -169,50 +168,49 @@ fn create_panel(year : i32, month : u32, st : Arc<Mutex<Storage>>, timer : Arc<M
         
                     })))
 
-                    ).title(year.to_string()).max_width(27)
-                )
+                    ).title(year.to_string())
+                ).max_width(27)
             )
             .child(
-                    // calendar with days
-                NamedView::new("view2", Panel::new(create_calendar(year, month, Arc::clone(&st_clone_panel))
-                    .child(Layer::new(
-                        LinearLayout::horizontal()
-                            .child(
-                                PaddedView::lrtb(36, 0, 0, 0, LinearLayout::vertical()
-                                    .child(
-                                        Button::new("Up", move |s| {
+                NamedView::new("view2", 
+                    // calendar
+                Panel::new(create_calendar(year, month, Arc::clone(&st_clone_panel))
+                    // month buttons
+                    .child(
+                        PaddedView::lrtb(((7*9)/2) - ((4 + 4 + 4)/2), 0, 0, 0,
+                    LinearLayout::horizontal()
+                        .child(
+                            Button::new("Prev", move |s| {
 
-                                            s.pop_layer();
+                                s.pop_layer();
 
-                                            let st_clone = Arc::clone(&st_clone_panel2);
+                                let st_clone = Arc::clone(&st_clone_panel2);
 
-                                            let tm_clone = Arc::clone(&tm_clone3);
+                                let tm_clone = Arc::clone(&tm_clone3);
 
-                                            if month-1 == 0{
-                                                s.add_layer(create_panel(year-1, 12, Arc::clone(&st_clone), tm_clone));
-                                            } else {
-                                                s.add_layer(create_panel(year, month-1, Arc::clone(&st_clone), tm_clone));
-                                            }
-                                        })
-                                    )
-                                    .child(
-                                        Button::new("Down", move |s| {
+                                if month-1 == 0{
+                                    s.add_layer(create_panel(year-1, 12, Arc::clone(&st_clone), tm_clone));
+                                } else {
+                                    s.add_layer(create_panel(year, month-1, Arc::clone(&st_clone), tm_clone));
+                                }
+                            })
+                        )
+                        .child(
+                            Button::new("Next", move |s| {
 
-                                            s.pop_layer();
+                                s.pop_layer();
 
-                                            let st_clone = Arc::clone(&st_clone_panel3);
+                                let st_clone = Arc::clone(&st_clone_panel3);
 
-                                            let tm_clone = Arc::clone(&tm_clone4);
+                                let tm_clone = Arc::clone(&tm_clone4);
 
-                                            if month+1 == 13{
-                                                s.add_layer(create_panel(year+1, 1, Arc::clone(&st_clone), tm_clone));
-                                            } else {
-                                                s.add_layer(create_panel(year, month+1, Arc::clone(&st_clone), tm_clone));
-                                            }
-                                        })
-                                    )
-                                )
-                            )
+                                if month+1 == 13{
+                                    s.add_layer(create_panel(year+1, 1, Arc::clone(&st_clone), tm_clone));
+                                } else {
+                                    s.add_layer(create_panel(year, month+1, Arc::clone(&st_clone), tm_clone));
+                                }
+                            })
+                        )
                         )
                     )
                 )
@@ -252,10 +250,10 @@ fn main() {
     let month = utc.month();
 
     // // Create a log file
-    // let log_file = File::create("app.log").unwrap();
+    let log_file = File::create("app.log").unwrap();
 
     // // Initialize the logger to write to the file
-    // WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
+    WriteLogger::init(LevelFilter::Info, Config::default(), log_file).unwrap();
 
     // storage that contains all user created data
     let data = Arc::new(Mutex::new(Storage::new(read())));
@@ -292,22 +290,36 @@ fn main() {
 
     siv.set_autorefresh(true);
 
-    let mut runner = siv.runner();
+    // let mut runner = siv.runner();
 
     // runner.run();
-
-    while runner.is_running() {
-
-        {
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
             let mut timer = tm.lock().unwrap();
-            // Handle timer event if time is up
             timer.update_finished_status();
         }
+    });
+    siv.run();
 
-        runner.refresh();
-        runner.step();
-        std::thread::sleep(std::time::Duration::from_secs_f32(0.1));
-    }
+    // while siv.runner().is_running() {
+    //     let mut timer = tm.lock().unwrap();
+    //     timer.update_finished_status();
+    //     std::thread::sleep(std::time::Duration::from_secs_f32(1.0));
+    // }
+
+    // while runner.is_running() {
+
+    //     {
+    //         let mut timer = tm.lock().unwrap();
+    //         // Handle timer event if time is up
+    //         timer.update_finished_status();
+    //     }
+
+    //     runner.refresh();
+    //     runner.step();
+    //     std::thread::sleep(std::time::Duration::from_secs_f32(0.1));
+    // }
 
     // siv.run();
 }

@@ -19,6 +19,7 @@ use cursive::theme::*;
 use cursive::views::*;
 use cursive::views::NamedView;
 use cursive::event::{Callback, Event, EventResult, Key, MouseButton, MouseEvent};
+use log::info;
 
 // Internal Dependencies ------------------------------------------------------
 use crate::util::storage::*;
@@ -27,6 +28,10 @@ use crate::util::textevent::*;
 use crate::tasklist::*;
 use crate::util::month::*;
 use crate::todolist::*;
+
+// Constants ------------------------------------------------------------------
+const DAY_TILE_WIDTH: i32 = 9;
+const DAY_TILE_HEIGHT: i32 = 5;
 
 pub struct CalendarView<T: TimeZone> {
     enabled: bool,
@@ -195,7 +200,7 @@ where
                 let num = index as i32;
 
                 // Draw day number
-                let (x, y) = (num%7*10, num/7*5);
+                let (x, y) = (num%7*DAY_TILE_WIDTH, num/7*DAY_TILE_HEIGHT);
                 
                 // Borrow the reference to storage using the async Arc and Mutex combination
                 let storage_ref = self.storage.lock().unwrap();
@@ -231,8 +236,8 @@ where
     fn draw_cell (&self, p: &Printer, offset_x : u8, offset_y : u8, day : String, color : ColorStyle,
         nums_incomplete: Vec<i32>, nums_complete: Vec<i32>, past : bool) {
         // sets the size of one calendar cell
-        let x_max : u8 = 10;
-        let y_max : u8 = 5;
+        let x_max : u8 = DAY_TILE_WIDTH as u8;
+        let y_max : u8 = DAY_TILE_HEIGHT as u8;
 
         // prints one calendar square
         for x in 0..x_max {
@@ -371,7 +376,7 @@ where
                     }
 
                 }
-                else if x == 7 && y == 1 {
+                else if x == x_max-3 && y == 1 {
                     if color == ColorStyle::secondary() {
                         p.with_color(color, |printer| {
                             printer.print((x + offset_x, y + offset_y), &day);
@@ -403,7 +408,7 @@ where
         //11 by 6 is the size of one cell
 
         let diff = mouse_pos.map(|v| v as i64) - offset.map(|v| v as i64);
-        let pos : cursive::XY<i32> = ((diff.x/11) as i32, (diff.y/6) as i32).into();
+        let pos : cursive::XY<i32> = ((diff.x/DAY_TILE_WIDTH as i64) as i32, (diff.y/DAY_TILE_HEIGHT as i64) as i32).into();
         Some((pos.x, pos.y).into())
         
     }
@@ -422,9 +427,7 @@ where
     }
 
     fn required_size(&mut self, _: Vec2) -> Vec2 {
-        //(11, 5).into()
-        self.size = (78, 36).into();
-        (78, 36).into()
+        (7*DAY_TILE_WIDTH, 6*DAY_TILE_HEIGHT).into()
     }
 
     fn on_event(&mut self, event: Event) -> EventResult {
@@ -534,7 +537,9 @@ where
 
         if let Some((x, y, month, year)) = offsets {
             if let Some(date) = date_from_cell_offset(&last_view_date, None, x, y, month, year) {
+                info!("Date: {:?}", date);
                 self.current_date = date_to_cell(&date);
+                info!("Date: {:?}", self.current_date);
                 self.set_view_date(date);
             }
         }
@@ -545,6 +550,7 @@ where
             let month_string = month_to_string(self.view_date.month() as i32);
 
             EventResult::Consumed(Some(Callback::from_fn(move |s| {
+                info!("Date: {:?}", year_string);
                 s.call_on_name("view1", |view: &mut NamedView<Panel<LinearLayout>>| {
                     view.get_mut().set_title(year_string.clone());
                 });
@@ -607,7 +613,7 @@ pub fn create_calendar(year : i32, month : u32, s : Arc<Mutex<Storage>>) -> Line
 
     for day in days_of_week.iter() {
         h_l.add_child(
-            Panel::new(ResizedView::with_fixed_size((8,1), 
+            Panel::new(ResizedView::with_fixed_size((DAY_TILE_WIDTH-2,1), 
             TextView::new(
             StyledString::styled(*day, 
                 Style::from(Color::Dark(BaseColor::Black)).combine(Effect::Bold))
@@ -627,6 +633,7 @@ pub fn create_calendar(year : i32, month : u32, s : Arc<Mutex<Storage>>) -> Line
 
 // calculates the date by using the y and x coordinates of a calendar date
 // helper function for converting mouse position to a date selection
+// TODO: clicking UP and DOWN works to switch year but not clicking blue days.
 fn date_from_cell_offset<T: TimeZone>(
     date: &DateTime<T>,
     set_day: Option<i32>,
@@ -635,9 +642,9 @@ fn date_from_cell_offset<T: TimeZone>(
     month_offset: i32,
     year_offset: i32,
 ) -> Option<DateTime<T>> {
-    let mut year = date.year() + year_offset;
-    let mut month = date.month0() as i32;
-    month += month_offset;
+    
+    let mut year  = date.year() + year_offset;
+    let mut month = date.month0() as i32 + month_offset;
 
     // let num_days = ndays_in_month(date.year(), date.month());
 
@@ -646,15 +653,8 @@ fn date_from_cell_offset<T: TimeZone>(
 
     let offset = y_offset*7 + x_offset;
 
-    while month < 0 {
-        year -= 1;
-        month += 12;
-    }
-
-    while month >= 12 {
-        month -= 12;
-        year += 1;
-    }
+    while month < 0   { year -= 1; month += 12; }
+    while month >= 12 { year += 1; month -= 12; }
 
     let d = date
         .with_day0(0)?

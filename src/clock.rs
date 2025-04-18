@@ -105,6 +105,6 @@ impl View for Clock {
     }
 
     fn required_size(&mut self, _: Vec2) -> Vec2 {
-        Vec2::new(78, 8)
+        Vec2::new(78, 7)
     }
 }
