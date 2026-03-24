@@ -1,0 +1,8 @@
+*
+!.gitignore
+!README.md
+!package.json
+!rustcal_wasm.d.ts
+!rustcal_wasm.js
+!rustcal_wasm_bg.wasm
+!rustcal_wasm_bg.wasm.d.ts
