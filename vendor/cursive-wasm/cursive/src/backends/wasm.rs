@@ -15,6 +15,7 @@ use web_sys::{Document, HtmlElement, KeyboardEvent, MouseEvent as WebMouseEvent}
 const ROOT_ID: &str = "cursive-wasm-root";
 const DEFAULT_COLS: usize = 108;
 const DEFAULT_ROWS: usize = 51;
+const LINE_HEIGHT: &str = "1.22";
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 struct EffectState {
@@ -258,7 +259,15 @@ impl Backend {
                 .create_element("span")
                 .map_err(|_| io_error("Failed to create row span"))?;
             span.set_text_content(Some(&run.text));
-            span.set_attribute("style", &run.style.to_css())
+            span.set_attribute(
+                "style",
+                &format!(
+                    "{}display: inline-block; line-height: {}; height: {}em; white-space: pre; vertical-align: top;",
+                    run.style.to_css(),
+                    LINE_HEIGHT,
+                    LINE_HEIGHT,
+                ),
+            )
                 .map_err(|_| io_error("Failed to style row span"))?;
 
             row_element
@@ -342,8 +351,8 @@ fn setup_root(root: &HtmlElement, cols: usize, initial_style: &CellStyle) -> std
     root.set_attribute(
         "style",
         &format!(
-            "display: inline-block; min-width: {}ch; padding: 12px 14px; white-space: pre; font-family: 'Iosevka Term', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace; font-size: clamp(10px, 0.95vw, 13px); line-height: 1.15; letter-spacing: 0; user-select: none; cursor: default; background-color: {}; color: {};",
-            cols, initial_style.back, initial_style.front
+            "display: inline-flex; flex-direction: column; align-items: flex-start; min-width: {}ch; padding: 12px 14px 16px; white-space: pre; font-family: 'Iosevka Term', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace; font-size: clamp(10px, 0.95vw, 13px); line-height: {}; letter-spacing: 0; font-variant-ligatures: none; text-rendering: optimizeLegibility; user-select: none; cursor: default; overflow: visible; background-color: {}; color: {};",
+            cols, LINE_HEIGHT, initial_style.back, initial_style.front
         ),
     )
     .map_err(|_| io_error("Failed to set root style"))?;
@@ -393,7 +402,10 @@ fn build_rows(
             .map_err(|_| io_error("Failed to cast row"))?;
         row.set_attribute(
             "style",
-            "display: block; min-height: 1.15em; white-space: pre;",
+            &format!(
+                "display: block; min-height: {}em; line-height: {}; margin: 0; padding: 0; white-space: pre; overflow: visible;",
+                LINE_HEIGHT, LINE_HEIGHT
+            ),
         )
         .map_err(|_| io_error("Failed to style row"))?;
 
