@@ -1,0 +1,114 @@
+[package]
+authors = ["Alexandre Bury <alexandre.bury@gmail.com>"]
+categories = ["command-line-interface", "gui"]
+description = "A TUI (Text User Interface) library focused on ease-of-use."
+documentation = "https://docs.rs/cursive"
+edition = "2021"
+keywords = ["ncurses", "TUI", "UI"]
+license = "MIT"
+name = "cursive"
+readme = "Readme.md"
+repository = "https://github.com/gyscos/cursive"
+version = "0.20.0"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+cursive_core = { path = "../cursive-core", version= "0.3.0"}
+crossbeam-channel = "0.5"
+cfg-if = "1"
+unicode-segmentation = "1"
+unicode-width = "0.1"
+lazy_static = "1"
+libc = "0.2"
+maplit = { version = "1.0", optional = true }
+log = "0.4"
+ahash = "0.8"
+futures = "0.3"
+
+[dependencies.wasm-bindgen]
+optional = true
+version = "0.2.63"
+
+[dependencies.web-sys]
+optional = true
+version = "0.3.64"
+features = [
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "KeyboardEvent",
+    "TextMetrics",
+    "Window",
+    "Document",
+]
+
+[dependencies.getrandom]
+optional = true
+version = "0.2"
+features = ["js"] 
+
+
+[features]
+doc-cfg = ["cursive_core/doc-cfg"]  # Enable doc_cfg, a nightly-only doc feature.
+builder = ["cursive_core/builder"]
+blt-backend = ["bear-lib-terminal"]
+default = []
+ncurses-backend = ["ncurses", "maplit"]
+pancurses-backend = ["pancurses", "maplit"]
+termion-backend = ["termion"]
+crossterm-backend = ["crossterm"]
+markdown = ["cursive_core/markdown"]
+ansi = ["cursive_core/ansi"]
+unstable_scroll = []  # Deprecated feature, remove in next version
+toml = ["cursive_core/toml"]
+wasm-backend = ["wasm-bindgen", "web-sys", "cursive_core/wasm", "getrandom"]
+
+[lib]
+name = "cursive"
+
+[target.'cfg(unix)'.dependencies]
+signal-hook = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.bear-lib-terminal]
+optional = true
+version = "2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.ncurses]
+features = ["wide"]
+optional = true
+version = "5.99.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.pancurses]
+features = ["wide"]
+optional = true
+version = "0.17"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.termion]
+optional = true
+version = "2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.crossterm]
+optional = true
+version = "0.26"
+
+[[example]]
+name = "theme"
+required-features = ["toml"]
+
+[[example]]
+name = "ansi"
+required-features = ["ansi"]
+
+[[example]]
+name = "builder"
+required-features = ["builder"]
+
+[dev-dependencies]
+rand = "0.8"
+atty = "0.2"
+pretty-bytes = "0.2"
+serde_json = "1.0.85"
+serde_yaml = "0.9.13"
+cursive-flexi-logger-view = "0.5.0"
+flexi_logger = "0.24.0"

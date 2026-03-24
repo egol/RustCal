@@ -1,33 +1,32 @@
 /// Contains all of the helpers and struct definition of the todo list popup
-
 // STD Dependencies -----------------------------------------------------------
 use std::collections::HashMap;
 
 // External Dependencies ------------------------------------------------------
 use chrono::prelude::*;
 use chrono::Datelike;
-use cursive::traits::*;
-use cursive::Cursive;
-use cursive::Vec2;
-use cursive::Printer;
 use cursive::direction::Direction;
-use cursive::view::CannotFocus;
-use cursive::theme::*;
-use cursive::views::*;
-use cursive::views::NamedView;
-use cursive::event::{Callback, Event, EventResult, MouseButton, MouseEvent};
 use cursive::event::Key;
+use cursive::event::{Callback, Event, EventResult, MouseButton, MouseEvent};
+use cursive::theme::*;
+use cursive::traits::*;
+use cursive::view::CannotFocus;
+use cursive::views::NamedView;
+use cursive::views::*;
+use cursive::Cursive;
+use cursive::Printer;
+use cursive::Vec2;
 
 // Debug dependencies ---------------------------------------------------------
 use log::info;
 
 // Internal dependencies ------------------------------------------------------
-use crate::util::textevent::*;
-use crate::tasklist::*;
 use crate::calendarview::*;
+use crate::tasklist::*;
 use crate::util::file::*;
+use crate::util::textevent::*;
 
-pub struct TodoList{
+pub struct TodoList {
     enabled: bool,
     size: Vec2,
     focused: Option<Vec2>,
@@ -35,7 +34,6 @@ pub struct TodoList{
 }
 
 impl TodoList {
-
     // Initializes the struct
     pub fn new() -> Self {
         Self {
@@ -56,52 +54,60 @@ impl TodoList {
 
     fn get_cell(&mut self, mouse_pos: Vec2, offset: Vec2) -> Option<Vec2> {
         let diff = mouse_pos.map(|v| v as i64) - offset.map(|v| v as i64);
-        let pos : cursive::XY<i32> = ((diff.x/1) as i32, (diff.y/1) as i32).into();
+        let pos: cursive::XY<i32> = ((diff.x / 1) as i32, (diff.y / 1) as i32).into();
 
         Some((pos.x, pos.y).into())
     }
 
     fn draw_list(&self, p: &Printer) {
-        if self.events_list.len() > 0{
-            for y in 1..self.events_list.len()+1 {
+        if self.events_list.len() > 0 {
+            for y in 1..self.events_list.len() + 1 {
                 for x in 0..self.size.x {
                     if x == 0 {
-                        if self.focused != None && self.focused.unwrap().x == 0 && self.focused.unwrap().y == y{
+                        if self.focused != None
+                            && self.focused.unwrap().x == 0
+                            && self.focused.unwrap().y == y
+                        {
                             p.with_color(ColorStyle::highlight(), |printer| {
                                 printer.print((x, y), "X");
                             });
-                        }
-                        else{
+                        } else {
                             p.with_color(ColorStyle::primary(), |printer| {
                                 printer.print((x, y), "x");
                             });
                         }
                     }
-                    if x == 2 || x == 3{
-                        if self.events_list[y-1].status == 1{
-                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90)), |printer| {
-                                printer.print((x, y), " ");
-                            });
-                        }
-                        else if self.events_list[y-1].status == 2{
-                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90)), |printer| {
-                                printer.print((x, y), " ");
-                            });
-                        }
-                        else{
-                            p.with_color(ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90)), |printer| {
-                                printer.print((x, y), " ");
-                            });
+                    if x == 2 || x == 3 {
+                        if self.events_list[y - 1].status == 1 {
+                            p.with_color(
+                                ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 190, 90)),
+                                |printer| {
+                                    printer.print((x, y), " ");
+                                },
+                            );
+                        } else if self.events_list[y - 1].status == 2 {
+                            p.with_color(
+                                ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(190, 90, 90)),
+                                |printer| {
+                                    printer.print((x, y), " ");
+                                },
+                            );
+                        } else {
+                            p.with_color(
+                                ColorStyle::new(Color::Rgb(0, 0, 0), Color::Rgb(90, 190, 90)),
+                                |printer| {
+                                    printer.print((x, y), " ");
+                                },
+                            );
                         }
                     }
                 }
-            }   
+            }
         }
     }
 }
 
 impl View for TodoList {
-
     fn draw(&self, printer: &Printer) {
         self.draw_list(printer);
     }
@@ -116,7 +122,6 @@ impl View for TodoList {
     }
 
     fn on_event(&mut self, event: Event) -> EventResult {
-
         if !self.enabled {
             return EventResult::Ignored;
         }
@@ -143,72 +148,110 @@ impl View for TodoList {
                     if self.focused == Some(pos) {
                         // We got a click here!
                         match btn {
-                            MouseButton::Left => { 
+                            MouseButton::Left => {
                                 // If the status button is pressed on the todo
-                                if (pos.x > 0 && pos.x < 4) && pos.y > 0 && self.events_list.len() > 0 && pos.y <= self.events_list.len(){
-                                    if self.events_list[pos.y-1].status < 2 {
-                                        self.events_list[pos.y-1].status += 1;
+                                if (pos.x > 0 && pos.x < 4)
+                                    && pos.y > 0
+                                    && self.events_list.len() > 0
+                                    && pos.y <= self.events_list.len()
+                                {
+                                    if self.events_list[pos.y - 1].status < 2 {
+                                        self.events_list[pos.y - 1].status += 1;
+                                    } else {
+                                        self.events_list[pos.y - 1].status = 0;
                                     }
-                                    else {
-                                        self.events_list[pos.y-1].status = 0;
-                                    }
 
-                                    let status = self.events_list[pos.y-1].status;
+                                    let status = self.events_list[pos.y - 1].status;
 
-                                    return EventResult::Consumed(Some(Callback::from_fn(move |s| {
+                                    return EventResult::Consumed(Some(Callback::from_fn(
+                                        move |s| {
+                                            let mut events_clone: HashMap<
+                                                NaiveDate,
+                                                Vec<TextEvent>,
+                                            > = Default::default();
 
-                                        let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
+                                            s.call_on_name(
+                                                "calendar",
+                                                |view: &mut CalendarView<Utc>| {
+                                                    let mut storage_ref_mut =
+                                                        view.storage.lock().unwrap();
 
-                                        s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
+                                                    storage_ref_mut
+                                                        .events
+                                                        .entry(
+                                                            NaiveDate::from_ymd_opt(
+                                                                view.view_date.year(),
+                                                                view.view_date.month(),
+                                                                view.view_date.day(),
+                                                            )
+                                                            .unwrap(),
+                                                        )
+                                                        .or_insert(Vec::new())[pos.y - 1]
+                                                        .status = status;
 
-                                            let mut storage_ref_mut = view.storage.lock().unwrap();
+                                                    events_clone = storage_ref_mut.events.clone();
+                                                },
+                                            );
 
-                                            storage_ref_mut.events.entry(
-                                                NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap())
-                                                .or_insert(Vec::new())[pos.y-1].status = status;
-
-                                            events_clone = storage_ref_mut.events.clone();
-
-                                        });
-
-                                        update_task_list_view(s, events_clone);
-
-                                    })));
+                                            update_task_list_view(s, events_clone);
+                                        },
+                                    )));
                                 }
                                 // If x button is pressed on todo list
-                                else if pos.x == 0 && pos.y > 0 && self.events_list.len() > 0 && pos.y <= self.events_list.len(){
-                                    self.events_list.remove(pos.y-1);
+                                else if pos.x == 0
+                                    && pos.y > 0
+                                    && self.events_list.len() > 0
+                                    && pos.y <= self.events_list.len()
+                                {
+                                    self.events_list.remove(pos.y - 1);
 
-                                    return EventResult::Consumed(Some(Callback::from_fn(move |s| {
+                                    return EventResult::Consumed(Some(Callback::from_fn(
+                                        move |s| {
+                                            // TODO: has to be a cleaner way of updating the task list based off of storage update
+                                            // TODO: cant edit other tasks after deleting a task??
+                                            let mut events_clone: HashMap<
+                                                NaiveDate,
+                                                Vec<TextEvent>,
+                                            > = Default::default();
 
-                                        // TODO: has to be a cleaner way of updating the task list based off of storage update
-                                        // TODO: cant edit other tasks after deleting a task??
-                                        let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
+                                            s.call_on_name(
+                                                "calendar",
+                                                |view: &mut CalendarView<Utc>| {
+                                                    let mut storage_ref_mut =
+                                                        view.storage.lock().unwrap();
 
-                                        s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
+                                                    info!("{:?}", storage_ref_mut.events);
 
-                                            let mut storage_ref_mut = view.storage.lock().unwrap();
+                                                    storage_ref_mut
+                                                        .events
+                                                        .entry(
+                                                            NaiveDate::from_ymd_opt(
+                                                                view.view_date.year(),
+                                                                view.view_date.month(),
+                                                                view.view_date.day(),
+                                                            )
+                                                            .unwrap(),
+                                                        )
+                                                        .or_default()
+                                                        .remove(pos.y - 1);
 
-                                            info!("{:?}", storage_ref_mut.events);
+                                                    events_clone = storage_ref_mut.events.clone();
 
-                                            storage_ref_mut.events.entry(NaiveDate::from_ymd_opt(view.view_date.year(),
-                                                view.view_date.month(), view.view_date.day()).unwrap())
-                                                .or_default().remove(pos.y-1);
+                                                    info!("{:?}", storage_ref_mut.events);
+                                                },
+                                            );
 
-                                            events_clone = storage_ref_mut.events.clone();
+                                            s.call_on_name(
+                                                "todo",
+                                                |view: &mut NamedView<ListView>| {
+                                                    let mut view = view.get_mut();
+                                                    view.remove_child(pos.y);
+                                                },
+                                            );
 
-                                            info!("{:?}", storage_ref_mut.events);
-
-                                        });
-
-                                        s.call_on_name("todo", |view: &mut NamedView<ListView>| {
-                                            let mut view = view.get_mut();
-                                            view.remove_child(pos.y);
-                                        });
-
-                                        update_task_list_view(s, events_clone);
-                                        
-                                    })));
+                                            update_task_list_view(s, events_clone);
+                                        },
+                                    )));
                                 }
                             }
                             _ => (),
@@ -219,20 +262,14 @@ impl View for TodoList {
             }
             // exit todo list on popup as well
             Event::Key(Key::Enter) => {
-
                 return EventResult::Consumed(Some(Callback::from_fn(move |s| {
-
                     s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
-
                         let mut_storage_ref = view.storage.lock().unwrap();
                         save_data(&mut_storage_ref.events);
-            
                     });
-        
+
                     s.pop_layer();
-
                 })))
-
             }
             _ => (),
         }
@@ -241,93 +278,112 @@ impl View for TodoList {
 }
 
 // creates the todo list popup
-pub fn create_todo_list<T: TimeZone + Send + Sync + 'static>(todo_list: TodoList, s: &mut Cursive) 
+pub fn create_todo_list<T: TimeZone + Send + Sync + 'static>(todo_list: TodoList, s: &mut Cursive)
 where
     T: TimeZone + Send + Sync + 'static,
     CalendarView<T>: View,
-    {
-
+{
     let events = todo_list.get_events();
 
-    s.add_layer(Dialog::around(LinearLayout::horizontal()
-        .child(NamedView::new("list", todo_list))
-        .child(
-                LinearLayout::vertical().child(NamedView::new("todo", ListView::new()
-                    // Each child is a single-line view with a label
-                    // This part loads any existing events from the storage
-                    .delimiter()
-                    .with(|list| {
+    s.add_layer(
+        Dialog::around(
+            LinearLayout::horizontal()
+                .child(NamedView::new("list", todo_list))
+                .child(
+                    LinearLayout::vertical()
+                        .child(
+                            NamedView::new(
+                                "todo",
+                                ListView::new()
+                                    // Each child is a single-line view with a label
+                                    // This part loads any existing events from the storage
+                                    .delimiter()
+                                    .with(|list| {
+                                        // list.add_child("", DummyView);
 
-                        // list.add_child("", DummyView);
+                                        // generate the children with a for loop
+                                        for (i, value) in events.iter().enumerate() {
+                                            list.add_child(
+                                                "",
+                                                create_event_editor::<T>(value.content.clone(), i),
+                                            );
+                                        }
+                                    }),
+                            )
+                            .scrollable(),
+                        )
+                        .child(Button::new_raw("<+>", |s| {
+                            let mut events: Vec<TextEvent> = Vec::new();
 
-                        // generate the children with a for loop
-                        for (i, value) in events.iter().enumerate() {
-                            list.add_child("",
-                                create_event_editor::<T>(value.content.clone(), i),
-                            );
-                        }
-                    }))
-                    .scrollable())
-                    .child(Button::new_raw("<+>", |s| {
+                            let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> =
+                                Default::default();
 
-                        let mut events: Vec<TextEvent> = Vec::new();
+                            // creates the entries in the calendar cells + storage
+                            s.call_on_name("calendar", |view: &mut CalendarView<T>| {
+                                let mut storage_ref_mut = view.storage.lock().unwrap();
 
-                        let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
+                                // create a new event in the storage if there is none at the hash map date specified
+                                storage_ref_mut
+                                    .events
+                                    .entry(
+                                        NaiveDate::from_ymd_opt(
+                                            view.view_date.year(),
+                                            view.view_date.month(),
+                                            view.view_date.day(),
+                                        )
+                                        .unwrap(),
+                                    )
+                                    .or_insert(Vec::new())
+                                    .push(TextEvent::new(String::from("")));
 
-                        // creates the entries in the calendar cells + storage
-                        s.call_on_name("calendar", |view: &mut CalendarView<T>| {
+                                events = storage_ref_mut
+                                    .events
+                                    .entry(
+                                        NaiveDate::from_ymd_opt(
+                                            view.view_date.year(),
+                                            view.view_date.month(),
+                                            view.view_date.day(),
+                                        )
+                                        .unwrap(),
+                                    )
+                                    .or_default()
+                                    .clone();
 
-                            let mut storage_ref_mut = view.storage.lock().unwrap();
-                            
-                            // create a new event in the storage if there is none at the hash map date specified
-                            storage_ref_mut.events.entry(
-                                NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap())
-                                .or_insert(Vec::new()).push(TextEvent::new(String::from("")));
+                                events_clone = storage_ref_mut.events.clone()
+                            });
 
-                            events = storage_ref_mut.events.entry(
-                                NaiveDate::from_ymd_opt(view.view_date.year(), view.view_date.month(), view.view_date.day()).unwrap()).or_default().clone();
-                            
-                            events_clone = storage_ref_mut.events.clone()
+                            update_task_list_view(s, events_clone);
 
-                        });
+                            // creates the entries in the todo popup
+                            s.call_on_name("todo", |view: &mut NamedView<ListView>| {
+                                let mut view = view.get_mut();
+                                let len = view.len() - 1;
 
-                        update_task_list_view(s, events_clone);
+                                view.add_child(
+                                    "", // &format!("Event {}:", len),
+                                    create_event_editor::<T>(String::from(""), len),
+                                );
+                            });
 
-                        // creates the entries in the todo popup
-                        s.call_on_name("todo", |view: &mut NamedView<ListView>| {
-                            let mut view = view.get_mut();
-                            let len = view.len()-1;
-
-                            view.add_child(
-                                "",// &format!("Event {}:", len),
-                                create_event_editor::<T>(String::from(""), len),
-                            );
-                        });
-
-                        // adds the newly created event to the todolist
-                        s.call_on_name("list", |view: &mut NamedView<TodoList>| {
-                            let mut view = view.get_mut();
-                            // view.add_status(0);
-                            view.sync_events(events.clone());
-                        });
-                        
-                    }))//.max_height(15)
-        ))
+                            // adds the newly created event to the todolist
+                            s.call_on_name("list", |view: &mut NamedView<TodoList>| {
+                                let mut view = view.get_mut();
+                                // view.add_status(0);
+                                view.sync_events(events.clone());
+                            });
+                        })), //.max_height(15)
+                ),
+        )
         .title("Todo")
-        
         .button("Ok", |s| {
-
             // this writes the current content of the storage to the json save file
             // saves on exiting the todo menu
             s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
-
                 let mut_storage_ref = view.storage.lock().unwrap();
                 save_data(&mut_storage_ref.events);
-    
             });
 
             s.pop_layer();
-
-        }));
-
+        }),
+    );
 }

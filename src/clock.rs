@@ -1,22 +1,21 @@
 // External Dependencies ------------------------------------------------------
 use chrono::prelude::*;
-use cursive::traits::*;
-use cursive::Vec2;
-use cursive::Printer;
-use cursive::theme::*;
 use cursive::event::{Event, EventResult};
-
+use cursive::theme::*;
+use cursive::traits::*;
+use cursive::Printer;
+use cursive::Vec2;
 
 const TOP: &str=   "  .oooo.   #     .o    #  .oooo.   #   .oooo.  #      .o   #  oooooooo #   .ooo    # ooooooooo # .ooooo.   #  .ooooo.  #    ";
 const M1: &str =   " d8P'`Y8b  #   o888    #.dP\"\"Y88b  #.dP\"\"Y88b  #    .d88   # dP\"\"\"\"\"\"\" #  .88'     #d\"\"\"\"\"\"\"8' #d88'   `8. #888' `Y88. #    ";
-const M2: &str =r##"888    888 #    888    #      |8P' #      |8P' #  .d'888   #d88888b.   # d88'      #      .8'  #Y88..  .8' #888    888 #    "##  ;
+const M2: &str = r##"888    888 #    888    #      |8P' #      |8P' #  .d'888   #d88888b.   # d88'      #      .8'  #Y88..  .8' #888    888 #    "##;
 const M3: &str =   "888    888 #    888    #    .d8P'  #    <88b.  #.d'  888   #    `Y88b  #d888P\"Ybo. #     .8'   # `88888b.  # `Vbood888 #    " ;
 const M4: &str =   "888    888 #    888    #  .dP'     #     `88b. #88ooo888oo #      |88  #Y88|   |88 #    .8'    #.8'  ``88b #      888' #    ";
 const M5: &str =   "`88b  d88' #    888    #.oP     .o #o.   .88P  #     888   #o.   .88P  #`Y88   88P #   .8'     #`8.   .88P #    .88P'  #    ";
 const BOT: &str=   " `Y8bd8P'  #   o888o   #8888888888 #`8bd88P'   #    o888o  #`8bd88P'   # `88bod8'  #  .8'      # `boood8'  #  .oP'     #    ";
 
-pub struct Clock{
-    time: String
+pub struct Clock {
+    time: String,
 }
 
 impl Clock {
@@ -26,13 +25,13 @@ impl Clock {
         }
     }
 
-    pub fn update_time(&mut self){
+    pub fn update_time(&mut self) {
         self.time = get_ascii_time(Local::now());
     }
 }
 
 /// takes a local date time and converts it to a ascii character representation
-pub fn get_ascii_time(local: DateTime<Local>) -> String{
+pub fn get_ascii_time(local: DateTime<Local>) -> String {
     let top: Vec<&str> = TOP.split('#').collect();
 
     let m1: Vec<&str> = M1.split('#').collect();
@@ -68,9 +67,9 @@ pub fn get_ascii_time(local: DateTime<Local>) -> String{
     let bot_str: String = tm.chars().map(|x| bot[x as usize - '0' as usize]).collect();
 
     return format!(
-        "{}\n{}\n{}\n{}\n{}\n{}\n{}", 
+        "{}\n{}\n{}\n{}\n{}\n{}\n{}",
         top_str, m1_str, m2_str, m3_str, m4_str, m5_str, bot_str
-    )
+    );
 }
 
 impl View for Clock {
@@ -83,25 +82,22 @@ impl View for Clock {
 
         for (x, c) in time.chars().enumerate() {
             temp += 1;
-            if c == '\n'{
+            if c == '\n' {
                 y += 1;
                 len = temp;
                 temp = 0;
-            }
-            else{
+            } else {
                 p.with_color(ColorStyle::primary(), |printer| {
-                    printer.print((x%len, y), &format!("{}", c));
+                    printer.print((x % len, y), &format!("{}", c));
                 });
             }
-
         }
-    }    
+    }
 
     fn on_event(&mut self, _event: Event) -> EventResult {
-
         self.update_time();
 
-        return EventResult::Ignored
+        return EventResult::Ignored;
     }
 
     fn required_size(&mut self, _: Vec2) -> Vec2 {
