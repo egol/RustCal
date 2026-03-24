@@ -54,13 +54,16 @@ version = "0.3.64"
 version = "0.3.64"
 features = [
     "CanvasRenderingContext2d",
+    "DomRect",
     "Document",
     "Element",
     "EventTarget",
     "FocusEvent",
     "HtmlCanvasElement",
+    "HtmlElement",
     "KeyboardEvent",
     "MouseEvent",
+    "Node",
     "Storage",
     "Window",
 ]
