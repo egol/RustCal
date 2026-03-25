@@ -212,8 +212,13 @@ impl Backend {
         setup_root(&root, DEFAULT_COLS, &initial_style)?;
         let rows = build_rows(&document, &root, DEFAULT_ROWS)?;
 
+        let row_anchor = rows
+            .first()
+            .cloned()
+            .ok_or_else(|| io_error("Failed to access initial row"))?;
+
         register_keyboard_events(&root, Rc::clone(&events))?;
-        register_mouse_events(&root, Rc::clone(&events), DEFAULT_COLS, DEFAULT_ROWS)?;
+        register_mouse_events(&root, &row_anchor, Rc::clone(&events), DEFAULT_COLS, DEFAULT_ROWS)?;
         register_resize_events(Rc::clone(&events))?;
 
         let mut backend = Backend {
@@ -469,19 +474,21 @@ fn register_keyboard_events(
 
 fn register_mouse_events(
     root: &HtmlElement,
+    row_anchor: &HtmlElement,
     events: Rc<RefCell<VecDeque<Event>>>,
     cols: usize,
     rows: usize,
 ) -> std::io::Result<()> {
     let press_events = Rc::clone(&events);
     let press_root = root.clone();
+    let press_row_anchor = row_anchor.clone();
     let press = Closure::wrap(Box::new(move |event: WebMouseEvent| {
         event.prevent_default();
         let _ = press_root.focus();
         if let Some(button) = map_mouse_button(event.button()) {
             press_events.borrow_mut().push_back(Event::Mouse {
                 offset: Vec2::new(0, 0),
-                position: mouse_position(&press_root, &event, cols, rows),
+                position: mouse_position(&press_root, &press_row_anchor, &event, cols, rows),
                 event: MouseEvent::Press(button),
             });
         }
@@ -492,12 +499,13 @@ fn register_mouse_events(
 
     let release_events = Rc::clone(&events);
     let release_root = root.clone();
+    let release_row_anchor = row_anchor.clone();
     let release = Closure::wrap(Box::new(move |event: WebMouseEvent| {
         event.prevent_default();
         if let Some(button) = map_mouse_button(event.button()) {
             release_events.borrow_mut().push_back(Event::Mouse {
                 offset: Vec2::new(0, 0),
-                position: mouse_position(&release_root, &event, cols, rows),
+                position: mouse_position(&release_root, &release_row_anchor, &event, cols, rows),
                 event: MouseEvent::Release(button),
             });
         }
@@ -577,15 +585,17 @@ fn modified_key_event(event: &KeyboardEvent, key: Key) -> Event {
 
 fn mouse_position(
     root: &HtmlElement,
+    row_anchor: &HtmlElement,
     event: &WebMouseEvent,
     cols: usize,
     rows: usize,
 ) -> Vec2 {
     let rect = root.get_bounding_client_rect();
+    let row_rect = row_anchor.get_bounding_client_rect();
     let cell_width = (rect.width() / cols as f64).max(1.0);
-    let cell_height = (rect.height() / rows as f64).max(1.0);
+    let cell_height = row_rect.height().max(1.0);
     let x = ((event.client_x() as f64 - rect.left()) / cell_width).floor();
-    let y = ((event.client_y() as f64 - rect.top()) / cell_height).floor();
+    let y = ((event.client_y() as f64 - row_rect.top()) / cell_height).floor();
 
     Vec2::new(
         x.max(0.0).min((cols.saturating_sub(1)) as f64) as usize,
