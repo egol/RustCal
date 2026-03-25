@@ -7,6 +7,6 @@ pub fn backend() -> Box<dyn Backend> {
 }
 
 #[cfg(target_family = "wasm")]
-pub fn backend() -> Box<dyn Backend> {
-    backends::wasm::Backend::init().unwrap()
+pub fn backend() -> std::io::Result<Box<dyn Backend>> {
+    backends::wasm::Backend::init()
 }

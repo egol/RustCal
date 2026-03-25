@@ -205,13 +205,14 @@ fn create_task_list(mut events: HashMap<NaiveDate, Vec<TextEvent>>) -> Vec<Vec<T
     let mut week_events: Vec<Vec<TextEvent>> = Vec::new();
 
     // get current date
-    let utc: DateTime<Local> = Local::now();
+    let today = Local::now().date_naive();
 
     // need to go through the next 7 days where the first day is the present
     for i in 0..8 {
+        let date = today + Duration::days(i.into());
         week_events.push(
             events
-                .entry(NaiveDate::from_ymd_opt(utc.year(), utc.month(), utc.day() + i).unwrap())
+                .entry(date)
                 .or_default()
                 .clone(),
         );
