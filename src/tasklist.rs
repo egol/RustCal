@@ -4,7 +4,6 @@
 use std::collections::HashMap;
 
 // External Dependencies ------------------------------------------------------
-use chrono::Datelike;
 use chrono::{prelude::*, Duration};
 use cursive::direction::Direction;
 use cursive::event::{Callback, Event, EventResult, MouseButton, MouseEvent};
@@ -17,10 +16,6 @@ use cursive::Cursive;
 use cursive::Printer;
 use cursive::Vec2;
 
-// Debug dependencies ---------------------------------------------------------
-
-use log::info;
-
 // Internal dependencies ------------------------------------------------------
 use crate::calendarview::*;
 use crate::util::month::*;
@@ -29,24 +24,20 @@ use crate::util::textevent::*;
 pub struct TaskList {
     enabled: bool,
     size: Vec2,
-    // focused: Option<Vec2>,
     text_event: TextEvent,
     date: DateTime<Local>,
-    index: usize,
-    id: i32,
+    display_index: usize,
 }
 
 impl TaskList {
     // Initializes the struct
-    pub fn new(date: DateTime<Local>, index: usize, event: TextEvent, id: i32) -> Self {
+    pub fn new(date: DateTime<Local>, display_index: usize, event: TextEvent) -> Self {
         Self {
             enabled: true,
             size: (0, 0).into(),
-            // focused: None,
             text_event: event,
             date: date,
-            index: index,
-            id: id,
+            display_index,
         }
     }
 
@@ -92,7 +83,7 @@ impl TaskList {
                 } else {
                     p.with_color(background_color, |printer| {
                         printer.with_style(Style::primary().combine(Effect::Bold), |printer| {
-                            printer.print((x, 0), format!("{}", self.index + 1).as_str());
+                            printer.print((x, 0), format!("{}", self.display_index + 1).as_str());
                         })
                     });
                 }
@@ -129,62 +120,19 @@ impl View for TaskList {
                 // if self.focused == Some(pos) {
                 match btn {
                     MouseButton::Left => {
-                        self.text_event.completed = !self.text_event.completed;
-                        let completed_status = self.text_event.completed;
-
-                        let text_event_date = self.date;
-
-                        let text_event_index = self.index;
-                        let id = self.id;
-
-                        info!("{:?}", self.text_event);
+                        let completed_status = !self.text_event.completed;
+                        let text_event_date = self.date.date_naive();
+                        let task_id = self.text_event.id;
 
                         return EventResult::Consumed(Some(Callback::from_fn(move |s| {
                             s.call_on_name("calendar", |view: &mut CalendarView<Utc>| {
                                 let mut storage_ref_mut = view.storage.lock().unwrap();
-
-                                storage_ref_mut
-                                    .events
-                                    .entry(
-                                        NaiveDate::from_ymd_opt(
-                                            text_event_date.year(),
-                                            text_event_date.month(),
-                                            text_event_date.day(),
-                                        )
-                                        .unwrap(),
-                                    )
-                                    .or_insert(Vec::new())[text_event_index]
-                                    .completed = completed_status;
-
-                                info!(
-                                    "{:?}",
-                                    storage_ref_mut
-                                        .events
-                                        .entry(
-                                            NaiveDate::from_ymd_opt(
-                                                text_event_date.year(),
-                                                text_event_date.month(),
-                                                text_event_date.day()
-                                            )
-                                            .unwrap()
-                                        )
-                                        .or_insert(Vec::new())[text_event_index]
-                                );
+                                let _ =
+                                    storage_ref_mut.set_completed(text_event_date, task_id, completed_status);
                             });
 
-                            // need to refresh the TaskView in order to render the changes
-                            if completed_status {
-                                s.call_on_name(&format!("{id}"), |view: &mut TextView| {
-                                    view.set_style(Style::primary().combine(Effect::Strikethrough));
-                                });
-                            } else {
-                                s.call_on_name(&format!("{id}"), |view: &mut TextView| {
-                                    // this line is necessary to force refresh the text style
-                                    view.set_content(view.get_content().source());
-
-                                    view.set_style(Style::primary().combine(Effect::Simple));
-                                });
-                            }
+                            refresh_task_list_view::<Utc>(s);
+                            crate::todolist::refresh_todo_views::<Utc>(s);
                         })));
                     }
                     _ => (),
@@ -246,8 +194,6 @@ pub fn create_task_list_view(events: HashMap<NaiveDate, Vec<TextEvent>>) -> List
 
         let utc: DateTime<Local> = Local::now();
 
-        let mut id_counter = 0;
-
         for (day, tasks) in global_tasks.iter().enumerate() {
             if !tasks.is_empty() {
                 let task_date = utc + Duration::days(day as i64);
@@ -278,44 +224,31 @@ pub fn create_task_list_view(events: HashMap<NaiveDate, Vec<TextEvent>>) -> List
                             list.add_child(
                                 "",
                                 LinearLayout::horizontal()
-                                    .child(TaskList::new(
-                                        task_date,
-                                        task_counter,
-                                        task.clone(),
-                                        id_counter,
-                                    ))
+                                    .child(TaskList::new(task_date, task_counter, task.clone()))
                                     .child(TextView::new(" "))
                                     .child(
                                         TextView::new(StyledString::styled(
                                             format!("{}", task_name),
                                             Style::primary().combine(Effect::Strikethrough),
-                                        ))
-                                        .with_name(format!("{id_counter}")),
+                                        )),
                                     ),
                             );
                         } else {
                             list.add_child(
                                 "",
                                 LinearLayout::horizontal()
-                                    .child(TaskList::new(
-                                        task_date,
-                                        task_counter,
-                                        task.clone(),
-                                        id_counter,
-                                    ))
+                                    .child(TaskList::new(task_date, task_counter, task.clone()))
                                     .child(TextView::new(" "))
                                     .child(
                                         TextView::new(StyledString::styled(
                                             format!("{}", task_name),
                                             Style::primary().combine(Effect::Simple),
-                                        ))
-                                        .with_name(format!("{id_counter}")),
+                                        )),
                                     ),
                             );
                         }
 
                         task_counter += 1;
-                        id_counter += 1;
                     }
                 }
             }
@@ -326,11 +259,27 @@ pub fn create_task_list_view(events: HashMap<NaiveDate, Vec<TextEvent>>) -> List
 /// update tasklist by recreating it
 pub fn update_task_list_view(s: &mut Cursive, events: HashMap<NaiveDate, Vec<TextEvent>>) {
     s.call_on_name("tasklist", |view: &mut LinearLayout| {
-        view.remove_child(0);
+        if !view.is_empty() {
+            view.remove_child(0);
+        }
         view.add_child(
             Panel::new(create_task_list_view(events).scrollable())
                 .title("Next 7 Days")
                 .max_height(25),
         )
     });
+}
+
+pub fn refresh_task_list_view<T>(s: &mut Cursive)
+where
+    T: TimeZone + Send + Sync + 'static,
+    CalendarView<T>: View,
+{
+    let mut events = HashMap::new();
+
+    s.call_on_name("calendar", |view: &mut CalendarView<T>| {
+        events = view.storage.lock().unwrap().events.clone();
+    });
+
+    update_task_list_view(s, events);
 }

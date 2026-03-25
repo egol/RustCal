@@ -1,7 +1,6 @@
 /// Contains all of the logic necessary to draw the main calendar window with days
 // STD Dependencies -----------------------------------------------------------
 use std::cmp;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 // External Dependencies ------------------------------------------------------
@@ -26,7 +25,6 @@ use crate::todolist::*;
 use crate::util;
 use crate::util::month::*;
 use crate::util::storage::*;
-use crate::util::textevent::*;
 
 // Constants ------------------------------------------------------------------
 const DAY_TILE_WIDTH: i32 = 9;
@@ -487,28 +485,8 @@ where
                                     self.set_view_date(date);
                                 }
 
-                                let mut storage_ref_mut = self.storage.lock().unwrap();
-
-                                let events: Vec<TextEvent> = storage_ref_mut
-                                    .events
-                                    .entry(
-                                        NaiveDate::from_ymd_opt(
-                                            self.view_date.year(),
-                                            self.view_date.month(),
-                                            self.view_date.day(),
-                                        )
-                                        .unwrap(),
-                                    )
-                                    .or_default()
-                                    .clone();
-
                                 return EventResult::Consumed(Some(Callback::from_fn(
-                                    move |s: &mut Cursive| {
-                                        let mut list: TodoList = TodoList::new();
-                                        list.sync_events(events.clone());
-
-                                        create_todo_list::<T>(list, s);
-                                    },
+                                    move |s: &mut Cursive| create_todo_list::<T>(s),
                                 )));
                             }
                             _ => (),
@@ -526,26 +504,8 @@ where
             Event::Key(Key::Right) => Some((1, 0, 0, 0)),
             Event::Key(Key::Left) => Some((-1, 0, 0, 0)),
             Event::Key(Key::Enter) => {
-                let mut storage_ref_mut = self.storage.lock().unwrap();
-
-                let events = storage_ref_mut
-                    .events
-                    .entry(
-                        NaiveDate::from_ymd_opt(
-                            self.view_date.year(),
-                            self.view_date.month(),
-                            self.view_date.day(),
-                        )
-                        .unwrap(),
-                    )
-                    .or_default()
-                    .clone();
-
                 return EventResult::Consumed(Some(Callback::from_fn(move |s| {
-                    let mut list: TodoList = TodoList::new();
-                    list.sync_events(events.clone());
-
-                    create_todo_list::<T>(list, s);
+                    create_todo_list::<T>(s);
                 })));
             }
             _ => None,
@@ -585,37 +545,20 @@ where
 
 pub fn create_event_editor<T: TimeZone + Send + Sync + 'static>(
     content: String,
-    i: usize,
+    task_id: u64,
 ) -> ResizedView<EditView>
 where
     T: TimeZone + Send + Sync + 'static,
     CalendarView<T>: View,
 {
-    // TODO: Causing crash after removing element and then trying to edit
     EditView::new()
         .on_edit(move |s: &mut Cursive, text, _cursor| {
-            let mut events_clone: HashMap<NaiveDate, Vec<TextEvent>> = Default::default();
-
             s.call_on_name("calendar", |view: &mut CalendarView<T>| {
                 let mut storage_ref_mut = view.storage.lock().unwrap();
-
-                storage_ref_mut
-                    .events
-                    .entry(
-                        NaiveDate::from_ymd_opt(
-                            view.view_date.year(),
-                            view.view_date.month(),
-                            view.view_date.day(),
-                        )
-                        .unwrap(),
-                    )
-                    .or_insert(Vec::new())[i]
-                    .content = String::from(text);
-
-                events_clone = storage_ref_mut.events.clone();
+                let _ = storage_ref_mut.set_content(view.view_date.date_naive(), task_id, String::from(text));
             });
 
-            update_task_list_view(s, events_clone);
+            refresh_task_list_view::<T>(s);
         })
         .content(content)
         .fixed_width(25)
