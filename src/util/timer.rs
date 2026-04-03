@@ -1,7 +1,6 @@
 /// countdown timer for keeping track of pomodoro timer
-
 // External Dependencies ------------------------------------------------------
-use chrono::{Local, DateTime, Duration};
+use chrono::{DateTime, Duration, Local};
 
 pub struct CountdownTimer {
     duration: Duration,
@@ -70,8 +69,11 @@ pub struct PomodoroTimer {
 }
 
 impl PomodoroTimer {
-    pub fn new(work_duration: Duration, short_break_duration: Duration, long_break_duration: Duration) -> Self {
-
+    pub fn new(
+        work_duration: Duration,
+        short_break_duration: Duration,
+        long_break_duration: Duration,
+    ) -> Self {
         Self {
             timer: CountdownTimer::new(Duration::minutes(25)),
             work_duration,
@@ -116,12 +118,11 @@ impl PomodoroTimer {
     }
 
     pub fn skip(&mut self) {
-
         if self.on_break {
             // Moving from break back to work
             self.on_break = false;
             self.timer.reset(self.work_duration);
-    
+
             // Update tally for the break that was just completed
             self.break_count += 1;
             if self.break_count % 4 == 0 {
@@ -134,7 +135,7 @@ impl PomodoroTimer {
             self.on_break = true;
             self.work_sessions_completed += 1;
             self.total_work_time += self.timer.time_elapsed();
-    
+
             if self.break_count % 4 == 3 {
                 // Every fourth break is a long break (after 3 short breaks)
                 self.timer.reset(self.long_break_duration);

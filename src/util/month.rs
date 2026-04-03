@@ -1,6 +1,5 @@
 use chrono::prelude::*;
 
-
 /// Enumeration of all months in a year.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Month {
@@ -109,8 +108,8 @@ impl<'a> Into<i32> for Month {
     }
 }
 
-pub fn month_to_string(num : i32) -> String{
-    match num{
+pub fn month_to_string(num: i32) -> String {
+    match num {
         1 => String::from("January"),
         2 => String::from("February"),
         3 => String::from("March"),
@@ -118,7 +117,7 @@ pub fn month_to_string(num : i32) -> String{
         5 => String::from("May"),
         6 => String::from("June"),
         7 => String::from("July"),
-        8 => String::from("August"),    
+        8 => String::from("August"),
         9 => String::from("September"),
         10 => String::from("October"),
         11 => String::from("November"),
@@ -140,7 +139,7 @@ pub fn format_task_date(date: DateTime<Local>) -> String {
         Weekday::Sat => "Saturday",
         Weekday::Sun => "Sunday",
     };
-    
+
     let day_of_month = date.day();
 
     // Convert the day of the month to a string with a suffix (e.g., "13th")
@@ -152,16 +151,11 @@ pub fn format_task_date(date: DateTime<Local>) -> String {
     };
 
     // Format the date as "Friday, 13th"
-    format!(
-        "{}, {}{}",
-        weekday,
-        day_of_month,
-        day_suffix
-    )
+    format!("{}, {}{}", weekday, day_of_month, day_suffix)
 }
 
-pub fn abbr_month_to_string(num : i32) -> String{
-    match num{
+pub fn abbr_month_to_string(num: i32) -> String {
+    match num {
         1 => String::from("Jan"),
         2 => String::from("Feb"),
         3 => String::from("Mar"),
@@ -169,7 +163,7 @@ pub fn abbr_month_to_string(num : i32) -> String{
         5 => String::from("May"),
         6 => String::from("Jun"),
         7 => String::from("Jul"),
-        8 => String::from("Aug"),    
+        8 => String::from("Aug"),
         9 => String::from("Sep"),
         10 => String::from("Oct"),
         11 => String::from("Nov"),

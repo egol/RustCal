@@ -1,0 +1,18 @@
+{
+  "name": "gui",
+  "type": "module",
+  "collaborators": [
+    "Egor Lukiyanov <egoriluk@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "rustcal_wasm_bg.wasm",
+    "rustcal_wasm.js",
+    "rustcal_wasm.d.ts"
+  ],
+  "main": "rustcal_wasm.js",
+  "types": "rustcal_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
